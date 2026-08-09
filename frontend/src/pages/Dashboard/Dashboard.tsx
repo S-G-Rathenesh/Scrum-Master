@@ -1,22 +1,28 @@
-import React, { useEffect } from 'react';
 import { useProjectStore } from '../../stores/projectStore';
 import { useMonitoringStore } from '../../stores/monitoringStore';
+import { projectService, type IntegrationStatusResponse } from '../../services/projects';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/common/Card';
 import { Badge } from '../../components/common/Badge';
-import { Activity, AlertCircle, Clock, Zap, CheckCircle2, XCircle } from 'lucide-react';
+import { Button } from '../../components/common/Button';
+import { Activity, AlertCircle, Clock, Zap, CheckCircle2, XCircle, Terminal } from 'lucide-react';
+import React, { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import styles from './Dashboard.module.css';
 
 export const Dashboard: React.FC = () => {
   const { currentProject } = useProjectStore();
-  const { uptime, history, incidents, fetchDashboardData, clearData } = useMonitoringStore();
+  const { history, incidents, uptime, fetchDashboardData } = useMonitoringStore();
+  const [integration, setIntegration] = React.useState<IntegrationStatusResponse | null>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (currentProject) {
       fetchDashboardData(currentProject.id);
-    } else {
-      clearData();
+      projectService.getIntegrationStatus(currentProject.id)
+        .then(setIntegration)
+        .catch(() => setIntegration(null));
     }
-  }, [currentProject?.id, fetchDashboardData, clearData]);
+  }, [currentProject, fetchDashboardData]);
 
   if (!currentProject) {
     return (
@@ -122,6 +128,34 @@ export const Dashboard: React.FC = () => {
             </CardHeader>
             <CardContent>
               <div className={styles.targetStatusList}>
+                <div className={styles.targetStatus}>
+                  <div className={styles.targetInfo}>
+                    <Terminal size={16} />
+                    <span className={styles.targetName}>Agent Integration</span>
+                  </div>
+                  {currentProject.integrationStatus === 'CONNECTED' ? (
+                    <div className={styles.targetMetrics}>
+                      <span className={styles.metricLatency}>{integration?.lastHeartbeatAt ? new Date(integration.lastHeartbeatAt).toLocaleTimeString() : 'Connected'}</span>
+                      <Badge variant="success">CONNECTED</Badge>
+                    </div>
+                  ) : currentProject.integrationStatus === 'WAITING' ? (
+                    <div className={styles.targetMetrics}>
+                      <span className={styles.textMuted}>Awaiting heartbeat...</span>
+                      <Badge variant="warning">WAITING</Badge>
+                    </div>
+                  ) : currentProject.integrationStatus === 'DISCONNECTED' ? (
+                    <div className={styles.targetMetrics}>
+                      <span className={styles.textMuted}>Connection lost</span>
+                      <Badge variant="error">DISCONNECTED</Badge>
+                    </div>
+                  ) : (
+                    <div className={styles.targetMetrics}>
+                      <Button variant="outline" size="sm" onClick={() => navigate('/setup')}>Setup Integration</Button>
+                      <Badge variant="error">{currentProject.integrationStatus}</Badge>
+                    </div>
+                  )}
+                </div>
+
                 {currentProject.frontendUrl ? (
                   <div className={styles.targetStatus}>
                     <div className={styles.targetInfo}>

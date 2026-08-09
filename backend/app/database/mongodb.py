@@ -46,5 +46,9 @@ async def setup_indexes():
     # Incidents collection
     await db.db.incidents.create_index([("projectId", ASCENDING), ("status", ASCENDING)])
     
+    # Integrations collection
+    await db.db.integrations.create_index([("projectId", ASCENDING)], unique=True)
+    await db.db.integrations.create_index([("tokenHash", ASCENDING)], unique=True)
+    
 def get_database():
     return db.db

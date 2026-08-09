@@ -4,9 +4,11 @@ import uuid
 import logging
 import httpx
 from typing import Set, Tuple
+from datetime import timedelta
 from app.database.mongodb import get_database
 from app.monitoring.checker import perform_safe_check
 from app.monitoring.incident_manager import evaluate_incident
+from app.schemas.project import IntegrationStatus
 
 logger = logging.getLogger(__name__)
 
@@ -174,11 +176,61 @@ class MonitoringScheduler:
         except Exception as e:
             logger.error(f"Error in monitoring scheduler cycle: {e}", exc_info=True)
 
+    async def _sweep_stale_integrations(self):
+        """Finds integrations that have missed heartbeats and marks them disconnected."""
+        try:
+            db = get_database()
+            if db is None:
+                return
+                
+            now = datetime.now(timezone.utc)
+            # Threshold: 3 minutes without a heartbeat
+            threshold = now - timedelta(minutes=3)
+            
+            # Find connected integrations where lastHeartbeatAt < threshold
+            # or connectedAt < threshold and lastHeartbeatAt is None
+            stale_cursor = db.integrations.find({
+                "status": IntegrationStatus.CONNECTED.value,
+                "$or": [
+                    {"lastHeartbeatAt": {"$lt": threshold}},
+                    {"lastHeartbeatAt": None, "connectedAt": {"$lt": threshold}}
+                ]
+            })
+            
+            stale_project_ids = []
+            async for doc in stale_cursor:
+                stale_project_ids.append(doc["projectId"])
+                
+            if stale_project_ids:
+                # Update integrations
+                await db.integrations.update_many(
+                    {"projectId": {"$in": stale_project_ids}},
+                    {"$set": {
+                        "status": IntegrationStatus.DISCONNECTED.value,
+                        "updatedAt": now
+                    }}
+                )
+                
+                # Update projects
+                await db.projects.update_many(
+                    {"_id": {"$in": stale_project_ids}},
+                    {"$set": {
+                        "integrationStatus": IntegrationStatus.DISCONNECTED.value,
+                        "updatedAt": now
+                    }}
+                )
+                
+                logger.info(f"Marked {len(stale_project_ids)} stale integrations as DISCONNECTED.")
+                
+        except Exception as e:
+            logger.error(f"Error sweeping stale integrations: {e}", exc_info=True)
+
     async def _scheduler_loop(self):
         """Infinite loop polling for due checks."""
         try:
             while self._running:
                 await self._run_monitoring_cycle()
+                await self._sweep_stale_integrations()
                 await asyncio.sleep(10)
         except asyncio.CancelledError:
             logger.info("Scheduler loop cancelled.")

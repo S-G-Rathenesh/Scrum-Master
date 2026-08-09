@@ -24,7 +24,7 @@ async def create_project(
     project_doc = project.model_dump()
     project_doc["ownerId"] = current_user.id
     project_doc["status"] = ProjectStatus.ACTIVE.value
-    project_doc["integrationStatus"] = IntegrationStatus.NOT_CONNECTED.value
+    project_doc["integrationStatus"] = IntegrationStatus.WAITING.value
     project_doc["createdAt"] = datetime.now(timezone.utc)
     project_doc["updatedAt"] = datetime.now(timezone.utc)
     project_doc["lastConnectedAt"] = None

@@ -8,10 +8,10 @@ class ProjectStatus(str, Enum):
     INACTIVE = "INACTIVE"
 
 class IntegrationStatus(str, Enum):
-    NOT_CONNECTED = "NOT_CONNECTED"
-    PENDING = "PENDING"
+    WAITING = "WAITING"
     CONNECTED = "CONNECTED"
     DISCONNECTED = "DISCONNECTED"
+    REVOKED = "REVOKED"
 
 class ProjectBase(BaseModel):
     name: str

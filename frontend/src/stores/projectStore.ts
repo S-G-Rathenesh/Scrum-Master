@@ -9,6 +9,7 @@ interface ProjectState {
   fetchProjects: () => Promise<void>;
   setCurrentProject: (project: Project | null) => void;
   selectProjectById: (id: string) => void;
+  updateCurrentProjectIntegrationStatus: (status: 'WAITING' | 'CONNECTED' | 'DISCONNECTED' | 'REVOKED') => void;
 }
 
 export const useProjectStore = create<ProjectState>((set, get) => ({
@@ -50,6 +51,15 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     if (project) {
       localStorage.setItem('currentProjectId', project.id);
       set({ currentProject: project });
+    }
+  },
+
+  updateCurrentProjectIntegrationStatus: (status) => {
+    const { currentProject, projects } = get();
+    if (currentProject) {
+      const updatedProject = { ...currentProject, integrationStatus: status };
+      const updatedProjects = projects.map(p => p.id === currentProject.id ? updatedProject : p);
+      set({ currentProject: updatedProject, projects: updatedProjects });
     }
   }
 }));

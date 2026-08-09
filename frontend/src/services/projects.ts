@@ -6,7 +6,7 @@ export interface Project {
   name: string;
   description?: string;
   status: 'ACTIVE' | 'ARCHIVED';
-  integrationStatus: 'PENDING' | 'CONNECTED' | 'ERROR';
+  integrationStatus: 'WAITING' | 'CONNECTED' | 'DISCONNECTED' | 'REVOKED';
   monitoringStatus: 'up' | 'degraded' | 'down' | 'unknown';
   monitoringEnabled?: boolean;
   monitoringInterval?: number;
@@ -16,6 +16,16 @@ export interface Project {
   createdAt: string;
   updatedAt: string;
   lastConnectedAt?: string;
+}
+
+export interface IntegrationStatusResponse {
+  status: 'WAITING' | 'CONNECTED' | 'DISCONNECTED' | 'REVOKED';
+  createdAt: string;
+  updatedAt: string;
+  lastHeartbeatAt?: string;
+  connectedAt?: string;
+  revokedAt?: string;
+  agentVersion?: string;
 }
 
 export interface CreateProjectDTO {
@@ -43,5 +53,24 @@ export const projectService = {
   
   deleteProject: async (id: string): Promise<void> => {
     await api.delete(`/projects/${id}`);
+  },
+
+  getIntegrationStatus: async (projectId: string): Promise<IntegrationStatusResponse> => {
+    const response = await api.get(`/projects/${projectId}/integration/status`);
+    return response.data;
+  },
+
+  generateIntegrationToken: async (projectId: string): Promise<{ token: string }> => {
+    const response = await api.post(`/projects/${projectId}/integration/generate`);
+    return response.data;
+  },
+
+  regenerateIntegrationToken: async (projectId: string): Promise<{ token: string }> => {
+    const response = await api.post(`/projects/${projectId}/integration/regenerate`);
+    return response.data;
+  },
+
+  revokeIntegration: async (projectId: string): Promise<void> => {
+    await api.post(`/projects/${projectId}/integration/revoke`);
   }
 };
