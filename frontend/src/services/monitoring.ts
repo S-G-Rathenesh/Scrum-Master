@@ -37,6 +37,11 @@ export interface MonitoringUpdate {
   monitoringInterval?: number;
   frontendUrl?: string;
   backendUrl?: string;
+  notificationSettings?: {
+    emailNotifications: boolean;
+    newFeedback: boolean;
+    criticalErrors: boolean;
+  };
 }
 
 export const monitoringService = {

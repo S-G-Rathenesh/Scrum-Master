@@ -62,5 +62,10 @@ async def setup_indexes():
     # 7-day TTL index for raw events
     await db.db.error_events.create_index([("timestamp", ASCENDING)], expireAfterSeconds=604800)
     
+    # Feedback collection
+    await db.db.feedback.create_index([("projectId", ASCENDING), ("createdAt", DESCENDING)])
+    await db.db.feedback.create_index([("projectId", ASCENDING), ("status", ASCENDING)])
+    await db.db.feedback.create_index([("projectId", ASCENDING), ("isRead", ASCENDING)])
+    
 def get_database():
     return db.db

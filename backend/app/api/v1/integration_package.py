@@ -43,7 +43,9 @@ class ScrumMasterAgent {
     this.metadata = options.metadata || {};
     this.bufferSize = options.bufferSize || 100;
     this.errorBuffer = [];
+    this.feedbackBuffer = [];
     this.isFlushing = false;
+    this.isFlushingFeedback = false;
   }
 
   async connect() {
@@ -55,6 +57,7 @@ class ScrumMasterAgent {
     console.log(`[Scrum Master] Connecting agent to ${this.baseUrl}...`);
     this.startHeartbeat();
     this.startErrorFlusher();
+    this.startFeedbackFlusher();
   }
 
   startHeartbeat() {
@@ -156,12 +159,74 @@ class ScrumMasterAgent {
     }
   }
 
+  // --- FEEDBACK REPORTING ---
+  
+  submitFeedback(feedbackData) {
+    if (!feedbackData || !feedbackData.message) {
+      console.warn('[Scrum Master] Feedback requires at least a message field.');
+      return;
+    }
+    
+    const payload = {
+      name: feedbackData.name || null,
+      email: feedbackData.email || null,
+      subject: feedbackData.subject || null,
+      message: String(feedbackData.message).substring(0, 5000),
+      category: feedbackData.category || 'GENERAL',
+      source: feedbackData.source || 'IN_APP',
+      pageUrl: feedbackData.pageUrl || (typeof window !== 'undefined' ? window.location.href : null)
+    };
+    
+    this._queueFeedback(payload);
+  }
+  
+  _queueFeedback(payload) {
+    if (this.feedbackBuffer.length >= this.bufferSize) {
+      this.feedbackBuffer.shift();
+    }
+    this.feedbackBuffer.push(payload);
+  }
+  
+  startFeedbackFlusher() {
+    this.feedbackInterval = setInterval(() => this._flushFeedback(), 5000);
+  }
+  
+  async _flushFeedback() {
+    if (this.isFlushingFeedback || this.feedbackBuffer.length === 0 || !this.token) return;
+    
+    this.isFlushingFeedback = true;
+    const batch = [...this.feedbackBuffer];
+    this.feedbackBuffer = [];
+    
+    try {
+      for (const feedbackPayload of batch) {
+        await fetch(`${this.baseUrl}/api/v1/integration/feedback`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${this.token}`
+          },
+          body: JSON.stringify(feedbackPayload)
+        });
+      }
+    } catch (err) {
+      for (const f of batch) {
+         this._queueFeedback(f);
+      }
+    } finally {
+      this.isFlushingFeedback = false;
+    }
+  }
+
   stop() {
     if (this.heartbeatInterval) {
       clearInterval(this.heartbeatInterval);
     }
     if (this.errorInterval) {
       clearInterval(this.errorInterval);
+    }
+    if (this.feedbackInterval) {
+      clearInterval(this.feedbackInterval);
     }
   }
 }

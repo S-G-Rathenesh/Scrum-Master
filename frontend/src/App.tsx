@@ -14,6 +14,8 @@ import { Settings } from './pages/Settings/Settings';
 import { ApiHealth } from './pages/ApiHealth/ApiHealth';
 import { ErrorCenter } from './pages/ErrorCenter/ErrorCenter';
 import { ErrorDetail } from './pages/ErrorCenter/ErrorDetail';
+import { FeedbackHub } from './pages/FeedbackHub/FeedbackHub';
+import { FeedbackDetail } from './pages/FeedbackHub/FeedbackDetail';
 
 const PlaceholderPage = ({ title }: { title: string }) => (
   <div style={{ padding: '2rem', textAlign: 'center' }}>
@@ -51,9 +53,10 @@ function App() {
           <Route path="analytics" element={<PlaceholderPage title="Analytics" />} />
           <Route path="errors" element={<ErrorCenter />} />
           <Route path="errors/:id" element={<ErrorDetail />} />
+          <Route path="feedback" element={<FeedbackHub />} />
+          <Route path="feedback/:id" element={<FeedbackDetail />} />
           <Route path="api-health" element={<ApiHealth />} />
           <Route path="performance" element={<PlaceholderPage title="Performance Monitoring" />} />
-          <Route path="feedback" element={<PlaceholderPage title="Feedback" />} />
           <Route path="notifications" element={<PlaceholderPage title="Notifications" />} />
           <Route path="members" element={<PlaceholderPage title="Members" />} />
           <Route path="settings" element={<Settings />} />

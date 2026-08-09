@@ -16,6 +16,11 @@ export interface Project {
   createdAt: string;
   updatedAt: string;
   lastConnectedAt?: string;
+  notificationSettings?: {
+    emailNotifications: boolean;
+    newFeedback: boolean;
+    criticalErrors: boolean;
+  };
 }
 
 export interface IntegrationStatusResponse {

@@ -13,6 +13,11 @@ export const Settings: React.FC = () => {
     frontendUrl: '',
     backendUrl: '',
     monitoringInterval: 300,
+    notificationSettings: {
+      emailNotifications: true,
+      newFeedback: true,
+      criticalErrors: true
+    }
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState('');
@@ -24,6 +29,11 @@ export const Settings: React.FC = () => {
         frontendUrl: currentProject.frontendUrl || '',
         backendUrl: currentProject.backendUrl || '',
         monitoringInterval: currentProject.monitoringInterval || 300,
+        notificationSettings: currentProject.notificationSettings || {
+          emailNotifications: true,
+          newFeedback: true,
+          criticalErrors: true
+        }
       });
     }
   }, [currentProject]);
@@ -111,10 +121,43 @@ export const Settings: React.FC = () => {
               </select>
             </div>
 
+            <hr style={{ border: 'none', borderTop: '1px solid var(--border-color)', margin: '1rem 0' }} />
+            
+            <h3 style={{ fontSize: '1rem', marginBottom: '1rem' }}>Notification Settings</h3>
+            
+            <div className={styles.toggleRow}>
+              <label className={styles.toggleLabel}>
+                <input
+                  type="checkbox"
+                  checked={formData.notificationSettings.emailNotifications}
+                  onChange={(e) => setFormData({ 
+                    ...formData, 
+                    notificationSettings: { ...formData.notificationSettings, emailNotifications: e.target.checked }
+                  })}
+                />
+                Enable Email Notifications
+              </label>
+            </div>
+            
+            <div className={styles.toggleRow}>
+              <label className={styles.toggleLabel} style={{ opacity: formData.notificationSettings.emailNotifications ? 1 : 0.5 }}>
+                <input
+                  type="checkbox"
+                  checked={formData.notificationSettings.newFeedback}
+                  onChange={(e) => setFormData({ 
+                    ...formData, 
+                    notificationSettings: { ...formData.notificationSettings, newFeedback: e.target.checked }
+                  })}
+                  disabled={!formData.notificationSettings.emailNotifications}
+                />
+                New Feedback Alerts
+              </label>
+            </div>
+
             <div className={styles.actions}>
               {message && <span className={message.startsWith('Error') ? styles.errorMsg : styles.successMsg}>{message}</span>}
               <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? 'Saving...' : 'Save Monitoring Settings'}
+                {isSubmitting ? 'Saving...' : 'Save Settings'}
               </Button>
             </div>
           </form>

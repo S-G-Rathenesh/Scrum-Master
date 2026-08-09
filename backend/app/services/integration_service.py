@@ -135,3 +135,16 @@ async def process_heartbeat(raw_token: str, agent_version: str) -> Optional[str]
     )
     
     return str(project_id)
+
+async def validate_integration_token(raw_token: str) -> Optional[Tuple[str, str]]:
+    """
+    Validates a token and returns (project_id, integration_id) if valid, or None.
+    """
+    db = get_database()
+    t_hash = hash_token(raw_token)
+    
+    integration = await db.integrations.find_one({"tokenHash": t_hash})
+    if not integration or integration.get("status") == IntegrationStatus.REVOKED.value:
+        return None
+        
+    return str(integration["projectId"]), str(integration["_id"])

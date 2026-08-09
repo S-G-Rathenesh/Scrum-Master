@@ -1,6 +1,7 @@
 import { useProjectStore } from '../../stores/projectStore';
 import { useMonitoringStore } from '../../stores/monitoringStore';
 import { useErrorStore } from '../../stores/errorStore';
+import { useFeedbackStore } from '../../stores/feedbackStore';
 import { projectService, type IntegrationStatusResponse } from '../../services/projects';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/common/Card';
 import { Badge } from '../../components/common/Badge';
@@ -14,6 +15,7 @@ export const Dashboard: React.FC = () => {
   const { currentProject } = useProjectStore();
   const { history, incidents, uptime, fetchDashboardData } = useMonitoringStore();
   const { groups: errorGroups, fetchGroups: fetchErrorGroups, isLoading: errorsLoading } = useErrorStore();
+  const { unreadCount, fetchUnreadCount } = useFeedbackStore();
   const [integration, setIntegration] = React.useState<IntegrationStatusResponse | null>(null);
   const navigate = useNavigate();
 
@@ -21,11 +23,12 @@ export const Dashboard: React.FC = () => {
     if (currentProject) {
       fetchDashboardData(currentProject.id);
       fetchErrorGroups(currentProject.id);
+      fetchUnreadCount(currentProject.id);
       projectService.getIntegrationStatus(currentProject.id)
         .then(setIntegration)
         .catch(() => setIntegration(null));
     }
-  }, [currentProject, fetchDashboardData, fetchErrorGroups]);
+  }, [currentProject, fetchDashboardData, fetchErrorGroups, fetchUnreadCount]);
 
   if (!currentProject) {
     return (
@@ -238,6 +241,25 @@ export const Dashboard: React.FC = () => {
                   </div>
                 </div>
               )}
+            </CardContent>
+          </Card>
+
+          <Card className={styles.statusCard}>
+            <CardHeader style={{ paddingBottom: '0.5rem' }}>
+              <CardTitle style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                Feedback
+                <Button variant="outline" size="sm" onClick={() => navigate('/feedback')}>View Feedback Hub</Button>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div style={{ display: 'flex', gap: '2rem', alignItems: 'center', paddingTop: '0.5rem' }}>
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  <span style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                    {unreadCount}
+                  </span>
+                  <span className={styles.textMuted}>unread {unreadCount === 1 ? 'message' : 'messages'}</span>
+                </div>
+              </div>
             </CardContent>
           </Card>
 

@@ -1,4 +1,4 @@
-from pydantic import BaseModel, HttpUrl
+from pydantic import BaseModel, HttpUrl, Field
 from typing import Optional, List
 from datetime import datetime
 from enum import Enum
@@ -13,6 +13,11 @@ class IntegrationStatus(str, Enum):
     DISCONNECTED = "DISCONNECTED"
     REVOKED = "REVOKED"
 
+class NotificationSettings(BaseModel):
+    emailNotifications: bool = True
+    newFeedback: bool = True
+    criticalErrors: bool = True
+
 class ProjectBase(BaseModel):
     name: str
     description: Optional[str] = None
@@ -21,6 +26,7 @@ class ProjectBase(BaseModel):
     monitoringEnabled: bool = False
     monitoringInterval: int = 300 # seconds, default 5m
     requestTimeout: int = 10 # seconds
+    notificationSettings: Optional[NotificationSettings] = Field(default_factory=NotificationSettings)
 
 class ProjectCreate(ProjectBase):
     pass
@@ -34,6 +40,7 @@ class ProjectUpdate(BaseModel):
     monitoringEnabled: Optional[bool] = None
     monitoringInterval: Optional[int] = None
     requestTimeout: Optional[int] = None
+    notificationSettings: Optional[NotificationSettings] = None
 
 class ProjectResponse(ProjectBase):
     id: str
