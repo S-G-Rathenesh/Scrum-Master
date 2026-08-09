@@ -18,6 +18,8 @@ import { FeedbackHub } from './pages/FeedbackHub/FeedbackHub';
 import { FeedbackDetail } from './pages/FeedbackHub/FeedbackDetail';
 import { Analytics } from './pages/Analytics/Analytics';
 
+import { Landing } from './pages/Landing/Landing';
+
 const PlaceholderPage = ({ title }: { title: string }) => (
   <div style={{ padding: '2rem', textAlign: 'center' }}>
     <h2>{title}</h2>
@@ -43,10 +45,11 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
+        <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
         
         <Route path="/" element={<MainLayout />}>
-          <Route index element={<Dashboard />} />
+          <Route path="dashboard" element={<Dashboard />} />
           <Route path="projects" element={<Projects />} />
           <Route path="setup" element={<Setup />} />
           <Route path="analytics" element={<Analytics />} />
@@ -61,9 +64,9 @@ function App() {
           <Route path="notifications" element={<PlaceholderPage title="Notifications" />} />
           <Route path="members" element={<PlaceholderPage title="Members" />} />
           <Route path="settings" element={<Settings />} />
-          
-          <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
+        
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   );

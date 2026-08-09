@@ -78,7 +78,7 @@ export const ProjectSwitcher: React.FC = () => {
                     if (project.integrationStatus !== 'CONNECTED') {
                       navigate('/setup');
                     } else {
-                      navigate('/');
+                      navigate('/dashboard');
                     }
                   }}
                 >

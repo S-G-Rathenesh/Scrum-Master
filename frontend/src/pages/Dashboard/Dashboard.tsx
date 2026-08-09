@@ -8,7 +8,7 @@ import { Badge } from '../../components/common/Badge';
 import { Button } from '../../components/common/Button';
 import { Activity, AlertCircle, Clock, Zap, CheckCircle2, XCircle, Terminal } from 'lucide-react';
 import React, { useEffect } from 'react';
-import { useNavigate, Navigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import styles from './Dashboard.module.css';
 
 export const Dashboard: React.FC = () => {
@@ -36,8 +36,25 @@ export const Dashboard: React.FC = () => {
     }
     
     if (projects.length === 0) {
-      // Redirect first-time users directly to the setup wizard
-      return <Navigate to="/setup" replace />;
+      return (
+        <div className={styles.emptyStateContainer} style={{ display: 'flex', justifyContent: 'center', padding: '4rem 2rem' }}>
+          <div className={styles.emptyStateBox} style={{ backgroundColor: 'var(--bg-secondary)', padding: '3rem', borderRadius: 'var(--radius-lg)', maxWidth: '600px', textAlign: 'center' }}>
+            <h1 style={{ fontSize: '1.5rem', marginBottom: '0.5rem', color: 'var(--text-muted)' }}>Scrum Master</h1>
+            <h2 style={{ fontSize: '2.5rem', marginBottom: '1.5rem' }}>Welcome to your workspace</h2>
+            <p style={{ fontSize: '1.1rem', marginBottom: '2rem' }}>Connect your existing application to unlock:</p>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '1rem', margin: '0 auto 2.5rem', maxWidth: 'max-content' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '1.1rem' }}><CheckCircle2 size={20} color="var(--success-color)" /> Uptime Monitoring</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '1.1rem' }}><CheckCircle2 size={20} color="var(--success-color)" /> Error Tracking</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '1.1rem' }}><CheckCircle2 size={20} color="var(--success-color)" /> Performance Analytics</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '1.1rem' }}><CheckCircle2 size={20} color="var(--success-color)" /> Feedback</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '1.1rem' }}><CheckCircle2 size={20} color="var(--success-color)" /> Notifications</div>
+            </div>
+            
+            <Button size="lg" onClick={() => navigate('/setup')} style={{ padding: '0 3rem', height: '3.5rem', fontSize: '1.1rem' }}>Setup Scrum Master</Button>
+          </div>
+        </div>
+      );
     }
     
     return (
@@ -45,11 +62,8 @@ export const Dashboard: React.FC = () => {
         <div className={styles.emptyStateIcon}>
           <Activity size={48} />
         </div>
-        <h2>Let's connect your first project</h2>
-        <p>Connect an existing project to start monitoring uptime, performance, errors, feedback and analytics.</p>
-        <div style={{ marginTop: '1.5rem' }}>
-          <Button onClick={() => navigate('/setup')}>Setup Scrum Master</Button>
-        </div>
+        <h2>No project selected</h2>
+        <p>Please select a project from the sidebar to view its dashboard.</p>
       </div>
     );
   }

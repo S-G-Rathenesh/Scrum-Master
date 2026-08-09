@@ -6,6 +6,7 @@ from app.api.dependencies import get_current_user
 from app.schemas.user import UserResponse
 from app.database.mongodb import get_database
 from bson import ObjectId
+from app.services.enrollment_service import create_enrollment_credential
 
 router = APIRouter()
 
@@ -49,6 +50,20 @@ class ScrumMasterAgent {
   }
 
   async connect() {
+    // If the token is missing from options/env, try to load from local cache file
+    if (!this.token) {
+      try {
+        const fs = require('fs');
+        const path = require('path');
+        const tokenPath = path.resolve(process.cwd(), '.scrum-master', 'token');
+        if (fs.existsSync(tokenPath)) {
+          this.token = fs.readFileSync(tokenPath, 'utf8').trim();
+        }
+      } catch (e) {
+        // Ignore cache read errors
+      }
+    }
+
     if (!this.token) {
       console.warn('[Scrum Master] No integration token provided. Agent is disabled.');
       return;
@@ -60,27 +75,47 @@ class ScrumMasterAgent {
     this.startFeedbackFlusher();
   }
 
-  startHeartbeat() {
-    const sendHeartbeat = async () => {
-      try {
-        await fetch(`${this.baseUrl}/api/v1/integration/heartbeat`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${this.token}`
-          },
-          body: JSON.stringify({
-            agentVersion: '1.1.0',
-            metadata: this.metadata
-          })
-        });
-      } catch (err) {
-        // Silent failure for heartbeat
+  async _performHeartbeat() {
+    try {
+      const res = await fetch(`${this.baseUrl}/api/v1/integration/heartbeat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.token}`
+        },
+        body: JSON.stringify({
+          agentVersion: '1.2.0',
+          metadata: this.metadata
+        })
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        if (data.projectToken && data.projectToken !== this.token) {
+           this.token = data.projectToken;
+           try {
+             const fs = require('fs');
+             const path = require('path');
+             const dirPath = path.resolve(process.cwd(), '.scrum-master');
+             if (!fs.existsSync(dirPath)) {
+               fs.mkdirSync(dirPath, { recursive: true });
+             }
+             const tokenPath = path.join(dirPath, 'token');
+             fs.writeFileSync(tokenPath, this.token, { mode: 0o600 });
+             console.log('[Scrum Master] Project successfully enrolled and secured.');
+           } catch (e) {
+             console.warn('[Scrum Master] Failed to cache permanent token. Using in-memory.');
+           }
+        }
       }
-    };
+    } catch (err) {
+      // Silent failure for heartbeat
+    }
+  }
 
-    sendHeartbeat();
-    this.heartbeatInterval = setInterval(sendHeartbeat, 60000);
+  startHeartbeat() {
+    this._performHeartbeat();
+    this.heartbeatInterval = setInterval(() => this._performHeartbeat(), 60000);
   }
   
   // --- ERROR REPORTING ---
@@ -250,10 +285,37 @@ The goal is to safely add a periodic "heartbeat" to my application backend so Sc
 2. **Adapt the Agent**: If I am using Node.js, you can use the provided `scrum-master-agent.js`. If I am using another framework, please rewrite the logic in `scrum-master-agent.js` into a lightweight, non-blocking background task in my language (e.g., Python `asyncio.create_task`, or threading).
 3. **Environment Variables**: Use `SCRUM_MASTER_TOKEN` and `SCRUM_MASTER_URL`. Add them to `.env.example` but DO NOT commit my actual `.env` file containing the token.
 4. **Safety**: Scrum Master is an *external monitoring service*. If it goes down, my application MUST NOT crash. Ensure the heartbeat has short timeouts (e.g. 5s) and catches exceptions silently without breaking the main app flow.
-5. **Additive Changes**: Do not rewrite my existing routing, database, or authentication logic. Just import the agent and call `start()` during application startup.
+5. **Ignore File**: Ensure `.scrum-master/` is added to my `.gitignore` file to prevent accidental commit of permanent tokens.
+6. **Additive Changes**: Do not rewrite my existing routing, database, or authentication logic. Just import the agent and call `start()` during application startup.
 
 Please proceed to integrate it and let me know when it's done so I can test the connection!
 """
+
+@router.get("/enrollment-package")
+async def download_enrollment_package(
+    current_user: UserResponse = Depends(get_current_user)
+):
+    raw_token = await create_enrollment_credential(current_user.id)
+    
+    zip_buffer = io.BytesIO()
+    
+    with zipfile.ZipFile(zip_buffer, "a", zipfile.ZIP_DEFLATED, False) as zip_file:
+        zip_file.writestr("README.md", README_TEMPLATE)
+        config_content = CONFIG_EXAMPLE_TEMPLATE.replace("your_token_here", raw_token)
+        zip_file.writestr("scrum-master.config.example", config_content)
+        zip_file.writestr("integration/scrum-master-agent.js", AGENT_TEMPLATE_NODE)
+        zip_file.writestr("instructions/ANTIGRAVITY_INTEGRATION.md", ANTIGRAVITY_INSTRUCTIONS)
+        
+    zip_buffer.seek(0)
+    
+    return StreamingResponse(
+        zip_buffer,
+        media_type="application/zip",
+        headers={
+            "Content-Disposition": f"attachment; filename=scrum-master-integration-package.zip"
+        }
+    )
+
 
 @router.get("/download")
 async def download_integration_package(

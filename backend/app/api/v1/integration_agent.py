@@ -11,6 +11,9 @@ from app.services.feedback_service import FeedbackService
 from app.database.mongodb import get_database
 from pymongo.errors import PyMongoError
 from fastapi import BackgroundTasks
+from app.services.enrollment_service import consume_enrollment_credential
+from app.services.integration_service import create_or_regenerate_integration
+from app.schemas.project import ProjectStatus, IntegrationStatus
 
 router = APIRouter()
 
@@ -33,7 +36,43 @@ async def receive_heartbeat(
         
     token = auth_header.replace("Bearer ", "")
     
-    # Process heartbeat
+    if token.startswith("sm_enroll_"):
+        owner_id = await consume_enrollment_credential(token)
+        if not owner_id:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid, expired, or already used enrollment credential"
+            )
+            
+        # Provision a new Project
+        db = get_database()
+        now = datetime.now(timezone.utc)
+        project_name = "Connected Application"
+        if payload.metadata and "name" in payload.metadata:
+            project_name = payload.metadata["name"]
+            
+        project_doc = {
+            "name": project_name,
+            "ownerId": owner_id,
+            "status": ProjectStatus.ACTIVE.value,
+            "integrationStatus": IntegrationStatus.WAITING.value,
+            "createdAt": now,
+            "updatedAt": now,
+            "lastConnectedAt": None
+        }
+        
+        result = await db.projects.insert_one(project_doc)
+        project_id = str(result.inserted_id)
+        
+        # Create permanent integration token
+        project_token = await create_or_regenerate_integration(project_id)
+        
+        # Now process the heartbeat using the new permanent token to mark it connected
+        await process_heartbeat(project_token, payload.agentVersion)
+        
+        return {"status": "ok", "projectId": project_id, "projectToken": project_token}
+    
+    # Normal project heartbeat
     project_id = await process_heartbeat(token, payload.agentVersion)
     if not project_id:
         raise HTTPException(

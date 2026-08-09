@@ -37,7 +37,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
   }, [currentProject, fetchUnreadCount]);
   
   const mainNav = [
-    { name: 'Dashboard', to: '/', icon: LayoutDashboard },
+    { name: 'Dashboard', to: '/dashboard', icon: LayoutDashboard },
     { name: 'Projects', to: '/projects', icon: FolderKanban },
     { name: 'Analytics', to: '/analytics', icon: LineChart },
     { name: 'Errors', to: '/errors', icon: AlertCircle },

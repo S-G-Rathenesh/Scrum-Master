@@ -1,5 +1,5 @@
 import React from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, Navigate, useLocation } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
 import styles from './MainLayout.module.css';
@@ -12,6 +12,7 @@ export const MainLayout: React.FC = () => {
   const { isAuthenticated } = useAuthStore();
   const { isSidebarOpen, setSidebarOpen } = useUIStore();
   const { fetchProjects } = useProjectStore();
+  const location = useLocation();
 
   React.useEffect(() => {
     if (isAuthenticated) {
@@ -20,11 +21,7 @@ export const MainLayout: React.FC = () => {
   }, [isAuthenticated, fetchProjects]);
 
   if (!isAuthenticated) {
-    return (
-      <div className={styles.unauthenticated}>
-        <Outlet />
-      </div>
-    );
+    return <Navigate to="/login" replace state={{ from: location.pathname }} />;
   }
 
   return (
