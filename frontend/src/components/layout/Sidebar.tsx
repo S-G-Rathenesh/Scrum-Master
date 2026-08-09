@@ -30,7 +30,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
     { name: 'Dashboard', to: '/', icon: LayoutDashboard },
     { name: 'Projects', to: '/projects', icon: FolderKanban },
     { name: 'Analytics', to: '/analytics', icon: LineChart, disabled: true },
-    { name: 'Errors', to: '/errors', icon: AlertCircle, disabled: true },
+    { name: 'Errors', to: '/errors', icon: AlertCircle },
     { name: 'API Health', to: '/api-health', icon: Activity },
     { name: 'Performance', to: '/performance', icon: Zap, disabled: true },
     { name: 'Feedback', to: '/feedback', icon: MessageSquare, disabled: true },

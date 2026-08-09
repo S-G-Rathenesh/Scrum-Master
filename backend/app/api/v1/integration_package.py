@@ -36,89 +36,139 @@ SCRUM_MASTER_TOKEN=your_token_here
 AGENT_TEMPLATE_NODE = """// scrum-master-agent.js
 // A lightweight Node.js/Express integration for Scrum Master
 
-const https = require('https');
-const http = require('http');
-const { URL } = require('url');
-
 class ScrumMasterAgent {
   constructor(options = {}) {
     this.token = options.token || process.env.SCRUM_MASTER_TOKEN;
-    this.serverUrl = options.serverUrl || process.env.SCRUM_MASTER_URL || 'https://api.scrummaster.rathenesh.dev';
-    this.intervalMs = options.intervalMs || 60000; // default 60 seconds
-    this.agentVersion = '1.0.0';
-    
-    this.timer = null;
+    this.baseUrl = options.serverUrl || process.env.SCRUM_MASTER_URL || 'https://api.scrummaster.rathenesh.dev';
+    this.metadata = options.metadata || {};
+    this.bufferSize = options.bufferSize || 100;
+    this.errorBuffer = [];
+    this.isFlushing = false;
   }
 
-  start() {
+  async connect() {
     if (!this.token) {
-      console.warn('[Scrum Master] Integration agent disabled: SCRUM_MASTER_TOKEN not provided.');
+      console.warn('[Scrum Master] No integration token provided. Agent is disabled.');
       return;
     }
+
+    console.log(`[Scrum Master] Connecting agent to ${this.baseUrl}...`);
+    this.startHeartbeat();
+    this.startErrorFlusher();
+  }
+
+  startHeartbeat() {
+    const sendHeartbeat = async () => {
+      try {
+        await fetch(`${this.baseUrl}/api/v1/integration/heartbeat`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${this.token}`
+          },
+          body: JSON.stringify({
+            agentVersion: '1.1.0',
+            metadata: this.metadata
+          })
+        });
+      } catch (err) {
+        // Silent failure for heartbeat
+      }
+    };
+
+    sendHeartbeat();
+    this.heartbeatInterval = setInterval(sendHeartbeat, 60000);
+  }
+  
+  // --- ERROR REPORTING ---
+  
+  captureException(error, context = {}) {
+    if (!error) return;
     
-    console.log(`[Scrum Master] Integration agent started. Heartbeat every ${this.intervalMs}ms.`);
+    const payload = {
+      errorType: error.name || 'Error',
+      message: error.message || String(error),
+      severity: 'ERROR',
+      source: 'backend', // Overridable via context
+      environment: context.environment || 'production',
+      stackTrace: error.stack || null,
+      ...context
+    };
     
-    // Initial heartbeat
-    this.sendHeartbeat();
+    this._queueError(payload);
+  }
+  
+  captureMessage(message, severity = 'INFO', context = {}) {
+    const payload = {
+      errorType: 'LogMessage',
+      message: String(message),
+      severity: severity,
+      source: 'backend',
+      environment: context.environment || 'production',
+      ...context
+    };
     
-    // Recurring heartbeat
-    this.timer = setInterval(() => this.sendHeartbeat(), this.intervalMs);
+    this._queueError(payload);
+  }
+  
+  _queueError(payload) {
+    if (this.errorBuffer.length >= this.bufferSize) {
+      // Drop oldest if buffer full
+      this.errorBuffer.shift();
+    }
+    this.errorBuffer.push(payload);
+  }
+  
+  startErrorFlusher() {
+    // Flush errors every 5 seconds if available
+    this.errorInterval = setInterval(() => this._flushErrors(), 5000);
+  }
+  
+  async _flushErrors() {
+    if (this.isFlushing || this.errorBuffer.length === 0 || !this.token) return;
+    
+    this.isFlushing = true;
+    const batch = [...this.errorBuffer];
+    this.errorBuffer = [];
+    
+    try {
+      // In a more complex agent we would send a batch array, 
+      // but for Phase 4 we send them individually in a non-blocking loop 
+      // to the /errors endpoint.
+      for (const errorPayload of batch) {
+        await fetch(`${this.baseUrl}/api/v1/integration/errors`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${this.token}`
+          },
+          body: JSON.stringify(errorPayload)
+        });
+      }
+    } catch (err) {
+      // If we failed to send (e.g. network down), push them back to buffer 
+      // (ensuring we don't exceed max size)
+      for (const e of batch) {
+         this._queueError(e);
+      }
+    } finally {
+      this.isFlushing = false;
+    }
   }
 
   stop() {
-    if (this.timer) {
-      clearInterval(this.timer);
-      this.timer = null;
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval);
     }
-  }
-
-  sendHeartbeat() {
-    const payload = JSON.stringify({
-      agentVersion: this.agentVersion
-    });
-
-    try {
-      const url = new URL(`${this.serverUrl}/api/v1/integration/heartbeat`);
-      const client = url.protocol === 'https:' ? https : http;
-      
-      const req = client.request(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.token}`,
-          'Content-Length': Buffer.byteLength(payload)
-        },
-        timeout: 5000 // Short timeout to prevent blocking
-      }, (res) => {
-        // We do not strictly care about the response to avoid crashing user apps
-        res.on('data', () => {}); 
-        if (res.statusCode === 401) {
-          console.error('[Scrum Master] Integration token is invalid or revoked.');
-          this.stop(); // Stop pinging if permanently revoked
-        }
-      });
-
-      req.on('error', (e) => {
-        // Silently fail or log debug to avoid crashing the main application
-        // console.debug('[Scrum Master] Heartbeat failed:', e.message);
-      });
-
-      req.on('timeout', () => {
-        req.destroy();
-      });
-
-      req.write(payload);
-      req.end();
-    } catch (e) {
-      // Catch URL parsing errors or unexpected issues
-      console.error('[Scrum Master] Agent error:', e.message);
+    if (this.errorInterval) {
+      clearInterval(this.errorInterval);
     }
   }
 }
 
 // Example Express usage:
 // const agent = new ScrumMasterAgent();
-// agent.start();
+// agent.connect();
 
 module.exports = ScrumMasterAgent;
 """

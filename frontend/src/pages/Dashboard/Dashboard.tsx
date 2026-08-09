@@ -1,5 +1,6 @@
 import { useProjectStore } from '../../stores/projectStore';
 import { useMonitoringStore } from '../../stores/monitoringStore';
+import { useErrorStore } from '../../stores/errorStore';
 import { projectService, type IntegrationStatusResponse } from '../../services/projects';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/common/Card';
 import { Badge } from '../../components/common/Badge';
@@ -12,17 +13,19 @@ import styles from './Dashboard.module.css';
 export const Dashboard: React.FC = () => {
   const { currentProject } = useProjectStore();
   const { history, incidents, uptime, fetchDashboardData } = useMonitoringStore();
+  const { groups: errorGroups, fetchGroups: fetchErrorGroups, isLoading: errorsLoading } = useErrorStore();
   const [integration, setIntegration] = React.useState<IntegrationStatusResponse | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
     if (currentProject) {
       fetchDashboardData(currentProject.id);
+      fetchErrorGroups(currentProject.id);
       projectService.getIntegrationStatus(currentProject.id)
         .then(setIntegration)
         .catch(() => setIntegration(null));
     }
-  }, [currentProject, fetchDashboardData]);
+  }, [currentProject, fetchDashboardData, fetchErrorGroups]);
 
   if (!currentProject) {
     return (
@@ -205,6 +208,39 @@ export const Dashboard: React.FC = () => {
             </CardContent>
           </Card>
           
+          <Card className={styles.statusCard}>
+            <CardHeader style={{ paddingBottom: '0.5rem' }}>
+              <CardTitle style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                Application Errors
+                <Button variant="outline" size="sm" onClick={() => navigate('/errors')}>View Error Center</Button>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {errorsLoading ? (
+                <div className={styles.textMuted}>Loading errors...</div>
+              ) : (
+                <div style={{ display: 'flex', gap: '2rem', alignItems: 'center', paddingTop: '0.5rem' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <span style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                      {errorGroups.reduce((acc, g) => acc + g.occurrenceCount, 0).toLocaleString()}
+                    </span>
+                    <span className={styles.textMuted}>total occurrences (24h)</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: '1rem' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                      <Badge variant="warning">
+                        {errorGroups.filter(g => g.status === 'ONGOING').length} Ongoing
+                      </Badge>
+                      <Badge variant="error">
+                        {errorGroups.filter(g => g.severity === 'CRITICAL').length} Critical
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           {activeIncidents.length > 0 && (
             <Card className={styles.incidentCard}>
               <CardHeader>

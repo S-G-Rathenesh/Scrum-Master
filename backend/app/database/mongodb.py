@@ -50,5 +50,17 @@ async def setup_indexes():
     await db.db.integrations.create_index([("projectId", ASCENDING)], unique=True)
     await db.db.integrations.create_index([("tokenHash", ASCENDING)], unique=True)
     
+    # Error Groups collection
+    await db.db.error_groups.create_index([("projectId", ASCENDING), ("fingerprint", ASCENDING)], unique=True)
+    await db.db.error_groups.create_index([("projectId", ASCENDING), ("status", ASCENDING)])
+    await db.db.error_groups.create_index([("projectId", ASCENDING), ("lastSeenAt", DESCENDING)])
+    await db.db.error_groups.create_index([("projectId", ASCENDING), ("environment", ASCENDING)])
+    
+    # Error Events collection
+    await db.db.error_events.create_index([("projectId", ASCENDING), ("timestamp", DESCENDING)])
+    await db.db.error_events.create_index([("groupId", ASCENDING), ("timestamp", DESCENDING)])
+    # 7-day TTL index for raw events
+    await db.db.error_events.create_index([("timestamp", ASCENDING)], expireAfterSeconds=604800)
+    
 def get_database():
     return db.db
