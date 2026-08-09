@@ -181,7 +181,7 @@ class ScrumMasterAgent {
   }
   
   _queueFeedback(payload) {
-    if (this.feedbackBuffer.length >= this.bufferSize) {
+    if (this.feedbackBuffer.length >= 50) {
       this.feedbackBuffer.shift();
     }
     this.feedbackBuffer.push(payload);

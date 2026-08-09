@@ -9,6 +9,7 @@ from app.schemas.error import ErrorEventCreate
 from app.schemas.feedback import FeedbackCreate
 from app.services.feedback_service import FeedbackService
 from app.database.mongodb import get_database
+from pymongo.errors import PyMongoError
 from fastapi import BackgroundTasks
 
 router = APIRouter()
@@ -154,6 +155,9 @@ async def receive_feedback(
             email_notifications_enabled=email_notifications_enabled
         )
         return {"status": "ok", "feedbackId": feedback_response["id"]}
+    except PyMongoError as e:
+        # DB failure - return 503 Service Unavailable so agent can retry
+        raise HTTPException(status_code=503, detail="Database temporarily unavailable")
     except Exception as e:
         # Silently fail for external apps to not crash them, returning generic 500 error
         raise HTTPException(status_code=500, detail="Error processing feedback")
