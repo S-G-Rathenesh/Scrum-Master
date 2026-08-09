@@ -8,7 +8,7 @@ import { Badge } from '../../components/common/Badge';
 import { Button } from '../../components/common/Button';
 import { Activity, AlertCircle, Clock, Zap, CheckCircle2, XCircle, Terminal } from 'lucide-react';
 import React, { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Navigate } from 'react-router-dom';
 import styles from './Dashboard.module.css';
 
 export const Dashboard: React.FC = () => {
@@ -36,18 +36,8 @@ export const Dashboard: React.FC = () => {
     }
     
     if (projects.length === 0) {
-      return (
-        <div className={styles.emptyState}>
-          <div className={styles.emptyStateIcon}>
-            <Activity size={48} />
-          </div>
-          <h2>No projects yet</h2>
-          <p>Create your first project to start monitoring your frontend, backend, errors, feedback and analytics.</p>
-          <div style={{ marginTop: '1.5rem' }}>
-            <Button onClick={() => navigate('/projects?new=true')}>+ Create Project</Button>
-          </div>
-        </div>
-      );
+      // Redirect first-time users directly to the setup wizard
+      return <Navigate to="/setup" replace />;
     }
     
     return (
@@ -55,8 +45,11 @@ export const Dashboard: React.FC = () => {
         <div className={styles.emptyStateIcon}>
           <Activity size={48} />
         </div>
-        <h2>No project selected</h2>
-        <p>Please select a project from the top menu to view monitoring data.</p>
+        <h2>Let's connect your first project</h2>
+        <p>Connect an existing project to start monitoring uptime, performance, errors, feedback and analytics.</p>
+        <div style={{ marginTop: '1.5rem' }}>
+          <Button onClick={() => navigate('/setup')}>Setup Scrum Master</Button>
+        </div>
       </div>
     );
   }

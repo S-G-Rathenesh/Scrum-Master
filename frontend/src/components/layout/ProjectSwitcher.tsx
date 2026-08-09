@@ -28,7 +28,7 @@ export const ProjectSwitcher: React.FC = () => {
   const getStatusColor = (status: string, intStatus: string) => {
     if (status === 'INACTIVE') return '🔴';
     if (intStatus === 'CONNECTED') return '🟢';
-    if (intStatus === 'PENDING') return '🟡';
+    if (intStatus === 'WAITING') return '🟡';
     return '⚪';
   };
 
@@ -40,7 +40,12 @@ export const ProjectSwitcher: React.FC = () => {
             <span className={styles.projectIcon}>
               {getStatusColor(currentProject.status, currentProject.integrationStatus)}
             </span>
-            <span className={styles.projectName}>{currentProject.name}</span>
+            <span className={styles.projectName}>
+              {currentProject.name}
+              {currentProject.integrationStatus === 'WAITING' && (
+                <span style={{ opacity: 0.7, fontSize: '0.85em', marginLeft: '6px' }}>• Waiting</span>
+              )}
+            </span>
           </>
         ) : (
           <span className={styles.projectName}>Select Project</span>
@@ -70,12 +75,22 @@ export const ProjectSwitcher: React.FC = () => {
                   onClick={() => {
                     selectProjectById(project.id);
                     setIsOpen(false);
+                    if (project.integrationStatus !== 'CONNECTED') {
+                      navigate('/setup');
+                    } else {
+                      navigate('/');
+                    }
                   }}
                 >
                   <span className={styles.projectIcon}>
                     {getStatusColor(project.status, project.integrationStatus)}
                   </span>
-                  <span className={styles.projectItemName}>{project.name}</span>
+                  <span className={styles.projectItemName}>
+                    {project.name}
+                    {project.integrationStatus === 'WAITING' && (
+                      <span style={{ opacity: 0.7, fontSize: '0.85em', marginLeft: '6px' }}>• Waiting</span>
+                    )}
+                  </span>
                   {currentProject?.id === project.id && (
                     <Check size={16} className={styles.checkIcon} />
                   )}
@@ -91,7 +106,7 @@ export const ProjectSwitcher: React.FC = () => {
               className={styles.addBtn}
               onClick={() => {
                 setIsOpen(false);
-                navigate('/projects?new=true');
+                navigate('/setup?new=true');
               }}
             >
               <Plus size={16} />
