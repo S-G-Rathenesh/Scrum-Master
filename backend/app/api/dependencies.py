@@ -1,4 +1,4 @@
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Path
 from fastapi.security import OAuth2PasswordBearer
 import jwt
 from jwt.exceptions import InvalidTokenError
@@ -38,3 +38,18 @@ async def get_current_user(
     
     user["id"] = str(user["_id"])
     return UserResponse(**user)
+
+async def require_project_ownership(
+    project_id: str = Path(...),
+    current_user: UserResponse = Depends(get_current_user),
+    db = Depends(get_database)
+):
+    try:
+        obj_id = ObjectId(project_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid project ID format")
+        
+    project = await db.projects.find_one({"_id": obj_id, "ownerId": current_user.id})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    return project

@@ -24,6 +24,7 @@ from app.api.v1.integration_agent import router as integration_agent_router
 from app.api.v1.integration_package import router as integration_package_router
 from app.api.v1.errors import router as errors_router
 from app.api.v1.feedback import router as feedback_router
+from app.api.v1.analytics import router as analytics_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -65,6 +66,7 @@ app.include_router(health_router, prefix="/api/v1/health", tags=["health"])
 app.include_router(auth_router, prefix="/api/v1/auth", tags=["auth"])
 app.include_router(projects_router, prefix="/api/v1/projects", tags=["projects"])
 app.include_router(monitoring_router, prefix="/api/v1/projects", tags=["monitoring"])
+app.include_router(analytics_router, prefix="/api/v1/projects", tags=["analytics"])
 app.include_router(members_router, prefix="/api/v1/members", tags=["members"])
 app.include_router(integration_management_router, prefix="/api/v1/projects/{project_id}/integration", tags=["integration-management"])
 app.include_router(

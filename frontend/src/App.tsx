@@ -16,6 +16,7 @@ import { ErrorCenter } from './pages/ErrorCenter/ErrorCenter';
 import { ErrorDetail } from './pages/ErrorCenter/ErrorDetail';
 import { FeedbackHub } from './pages/FeedbackHub/FeedbackHub';
 import { FeedbackDetail } from './pages/FeedbackHub/FeedbackDetail';
+import { Analytics } from './pages/Analytics/Analytics';
 
 const PlaceholderPage = ({ title }: { title: string }) => (
   <div style={{ padding: '2rem', textAlign: 'center' }}>
@@ -48,9 +49,9 @@ function App() {
           <Route index element={<Dashboard />} />
           <Route path="projects" element={<Projects />} />
           <Route path="setup" element={<Setup />} />
+          <Route path="analytics" element={<Analytics />} />
           
           {/* Placeholders for future phases */}
-          <Route path="analytics" element={<PlaceholderPage title="Analytics" />} />
           <Route path="errors" element={<ErrorCenter />} />
           <Route path="errors/:id" element={<ErrorDetail />} />
           <Route path="feedback" element={<FeedbackHub />} />
