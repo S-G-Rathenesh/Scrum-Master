@@ -12,7 +12,7 @@ import { useNavigate } from 'react-router-dom';
 import styles from './Dashboard.module.css';
 
 export const Dashboard: React.FC = () => {
-  const { currentProject } = useProjectStore();
+  const { currentProject, projects, isLoading: isProjectsLoading } = useProjectStore();
   const { history, incidents, uptime, fetchDashboardData } = useMonitoringStore();
   const { groups: errorGroups, fetchGroups: fetchErrorGroups, isLoading: errorsLoading } = useErrorStore();
   const { unreadCount, fetchUnreadCount } = useFeedbackStore();
@@ -31,13 +31,32 @@ export const Dashboard: React.FC = () => {
   }, [currentProject, fetchDashboardData, fetchErrorGroups, fetchUnreadCount]);
 
   if (!currentProject) {
+    if (isProjectsLoading) {
+      return null;
+    }
+    
+    if (projects.length === 0) {
+      return (
+        <div className={styles.emptyState}>
+          <div className={styles.emptyStateIcon}>
+            <Activity size={48} />
+          </div>
+          <h2>No projects yet</h2>
+          <p>Create your first project to start monitoring your frontend, backend, errors, feedback and analytics.</p>
+          <div style={{ marginTop: '1.5rem' }}>
+            <Button onClick={() => navigate('/projects?new=true')}>+ Create Project</Button>
+          </div>
+        </div>
+      );
+    }
+    
     return (
       <div className={styles.emptyState}>
         <div className={styles.emptyStateIcon}>
           <Activity size={48} />
         </div>
         <h2>No project selected</h2>
-        <p>Create or select a project to view monitoring data.</p>
+        <p>Please select a project from the top menu to view monitoring data.</p>
       </div>
     );
   }
