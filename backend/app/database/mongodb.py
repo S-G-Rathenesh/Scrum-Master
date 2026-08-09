@@ -14,7 +14,12 @@ db = Database()
 async def connect_to_mongo():
     logger.info("Connecting to MongoDB...")
     # Hide URI from logs and use 5000ms server selection timeout to fail fast
-    db.client = AsyncIOMotorClient(settings.MONGODB_URI, serverSelectionTimeoutMS=5000)
+    import certifi
+    db.client = AsyncIOMotorClient(
+        settings.MONGODB_URI, 
+        serverSelectionTimeoutMS=5000, 
+        tlsCAFile=certifi.where()
+    )
     db.db = db.client[settings.DATABASE_NAME]
     logger.info("Connected to MongoDB!")
     
