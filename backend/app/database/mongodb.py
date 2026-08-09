@@ -1,0 +1,50 @@
+from motor.motor_asyncio import AsyncIOMotorClient
+from pymongo import ASCENDING, DESCENDING
+from app.core.config import settings
+import logging
+
+logger = logging.getLogger(__name__)
+
+class Database:
+    client: AsyncIOMotorClient = None
+    db = None
+
+db = Database()
+
+async def connect_to_mongo():
+    logger.info("Connecting to MongoDB...")
+    db.client = AsyncIOMotorClient(settings.MONGODB_URI)
+    db.db = db.client[settings.DATABASE_NAME]
+    logger.info("Connected to MongoDB!")
+    
+    # Create necessary indexes
+    await setup_indexes()
+
+async def close_mongo_connection():
+    logger.info("Closing MongoDB connection...")
+    if db.client:
+        db.client.close()
+    logger.info("MongoDB connection closed.")
+
+async def setup_indexes():
+    if db.db is None:
+        return
+        
+    # Users collections
+    await db.db.users.create_index([("email", ASCENDING)], unique=True)
+    
+    # Projects collection
+    await db.db.projects.create_index([("ownerId", ASCENDING)])
+    await db.db.projects.create_index([("monitoringEnabled", ASCENDING)])
+    
+    # Monitoring Checks collection
+    await db.db.monitoring_checks.create_index([("projectId", ASCENDING), ("checkedAt", DESCENDING)])
+    await db.db.monitoring_checks.create_index([("projectId", ASCENDING), ("target", ASCENDING), ("checkedAt", DESCENDING)])
+    # 7-day retention TTL index
+    await db.db.monitoring_checks.create_index([("checkedAt", ASCENDING)], expireAfterSeconds=604800)
+    
+    # Incidents collection
+    await db.db.incidents.create_index([("projectId", ASCENDING), ("status", ASCENDING)])
+    
+def get_database():
+    return db.db

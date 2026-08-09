@@ -1,0 +1,128 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+}
+
+.title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--color-text-main);
+  margin-bottom: var(--space-1);
+}
+
+.subtitle {
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+}
+
+.emptyState {
+  padding: var(--space-8);
+  text-align: center;
+}
+
+.textMuted {
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+}
+
+.statusBox {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.statusMain {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.statusMain h2 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+
+.icon-success {
+  color: var(--color-success);
+}
+
+.icon-error {
+  color: var(--color-error);
+}
+
+.metricsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--space-4);
+  background-color: var(--color-bg-hover);
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+}
+
+.metricItem {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.metricLabel {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+
+.metricValue {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--color-text-main);
+}
+
+.historyTable {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.historyTable th,
+.historyTable td {
+  padding: var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+  font-size: 0.875rem;
+}
+
+.historyTable th {
+  font-weight: 600;
+  color: var(--color-text-muted);
+  background-color: var(--color-bg-hover);
+}
+
+.historyTable tr:last-child td {
+  border-bottom: none;
+}
+
+.mono {
+  font-family: monospace;
+}
+
+.errorCell {
+  color: var(--color-error);
+  max-width: 200px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.textCenter {
+  text-align: center;
+  color: var(--color-text-muted);
+  padding: var(--space-8) !important;
+}
