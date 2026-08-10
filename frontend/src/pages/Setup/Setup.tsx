@@ -6,6 +6,7 @@ import { SignalLine } from '../../components/common/SignalLine';
 import { StatusIndicator } from '../../components/common/StatusIndicator';
 import { Download, Copy, Check, CheckCircle2, AlertTriangle, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { API_BASE_URL } from '../../services/api';
 import styles from './Setup.module.css';
 
 /* ─────────────────────────────────────────────────────────────
@@ -202,7 +203,7 @@ export const Setup: React.FC = () => {
       const token = localStorage.getItem('token') || '';
       if (!token) throw new Error('Authentication session expired. Please sign in again.');
 
-      const res = await fetch('http://localhost:8000/api/v1/integration/enrollment-package', {
+      const res = await fetch(`${API_BASE_URL}/integration/enrollment-package`, {
         method: 'GET',
         headers: { Authorization: `Bearer ${token}` },
       });

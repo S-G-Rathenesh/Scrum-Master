@@ -41,13 +41,15 @@ app = FastAPI(
 )
 
 # CORS configuration
-origins = [
-    "http://localhost:5173", # Vite dev server
-    "http://localhost:5174",
-    "http://localhost:5175",
-    "http://localhost:5176",
-    "https://scrummaster.rathenesh.dev"
-]
+origins = [settings.FRONTEND_URL]
+
+if settings.ENVIRONMENT == "development":
+    origins.extend([
+        "http://localhost:5173",
+        "http://localhost:5174",
+        "http://localhost:5175",
+        "http://localhost:5176"
+    ])
 
 app.add_middleware(
     CORSMiddleware,

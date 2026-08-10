@@ -9,6 +9,8 @@ from app.database.mongodb import get_database
 from bson import ObjectId
 from app.services.enrollment_service import create_enrollment_credential
 
+from app.core.config import settings
+
 router = APIRouter()
 
 README_TEMPLATE = """# Scrum Master Integration Layer
@@ -29,7 +31,7 @@ CONFIG_EXAMPLE_TEMPLATE = """# Add these to your application environment configu
 # Do NOT commit your actual .env file containing tokens to version control!
 
 # The URL of your Scrum Master instance
-SCRUM_MASTER_URL=http://localhost:8000
+SCRUM_MASTER_URL=__BACKEND_URL__
 
 # The secure integration token or enrollment credential
 SCRUM_MASTER_TOKEN=your_token_here
@@ -48,7 +50,7 @@ const path = require('path');
 class ScrumMasterAgent {
   constructor(options = {}) {
     this.token = options.token || process.env.SCRUM_MASTER_TOKEN;
-    this.baseUrl = options.serverUrl || process.env.SCRUM_MASTER_URL || 'http://localhost:8000';
+    this.baseUrl = options.serverUrl || process.env.SCRUM_MASTER_URL || '__BACKEND_URL__';
     this.metadata = options.metadata || this._discoverMetadata();
     this.bufferSize = options.bufferSize || 100;
     this.errorBuffer = [];
@@ -351,9 +353,10 @@ async def _build_zip_package(user_id: str, project_id: Optional[str] = None) -> 
     with zipfile.ZipFile(zip_buffer, "a", zipfile.ZIP_DEFLATED, False) as zip_file:
         zip_file.writestr("scrum-master/README.md", README_TEMPLATE)
         zip_file.writestr("scrum-master/SCRUM_MASTER_INSTRUCTIONS.md", ANTIGRAVITY_INSTRUCTIONS)
-        config_content = CONFIG_EXAMPLE_TEMPLATE.replace("your_token_here", raw_token)
+        config_content = CONFIG_EXAMPLE_TEMPLATE.replace("your_token_here", raw_token).replace("__BACKEND_URL__", settings.BACKEND_URL)
         zip_file.writestr("scrum-master/scrum-master.config.example", config_content)
-        zip_file.writestr("scrum-master/scrum-master-agent.js", AGENT_TEMPLATE_NODE)
+        agent_content = AGENT_TEMPLATE_NODE.replace("__BACKEND_URL__", settings.BACKEND_URL)
+        zip_file.writestr("scrum-master/scrum-master-agent.js", agent_content)
         
     zip_buffer.seek(0)
     filename = "scrum-master.zip"

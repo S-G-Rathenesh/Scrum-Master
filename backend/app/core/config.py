@@ -5,6 +5,7 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "Scrum Master API"
     ENVIRONMENT: str = "development"
     FRONTEND_URL: str = "http://localhost:5173"
+    BACKEND_URL: str = "http://localhost:8000"
     
     # MongoDB
     MONGODB_URI: str = "mongodb://localhost:27017"
