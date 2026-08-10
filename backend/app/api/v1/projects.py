@@ -88,7 +88,7 @@ async def update_project(
             update_dict[k] = v.value
             
     updated_project = await db.projects.find_one_and_update(
-        {"_id": obj_id},
+        {"_id": obj_id, "ownerId": current_user.id},
         {"$set": update_dict},
         return_document=True
     )

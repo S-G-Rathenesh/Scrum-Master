@@ -62,7 +62,7 @@ export const useErrorStore = create<ErrorState>((set, get) => ({
   },
 
   fetchGroups: async (projectId) => {
-    set({ isLoading: true });
+    set({ isLoading: true, groups: [], totalGroups: 0, currentGroup: null, currentEvents: [] }); // Clear stale data
     try {
       const { filters } = get();
       const res = await errorService.getGroups(projectId, filters);

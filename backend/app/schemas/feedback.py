@@ -29,7 +29,7 @@ class FeedbackPriority(str, Enum):
 
 class FeedbackCreate(BaseModel):
     name: Optional[str] = Field(None, max_length=100)
-    email: Optional[EmailStr] = None
+    email: Optional[str] = Field(None, max_length=200)
     subject: Optional[str] = Field(None, max_length=200)
     message: str = Field(..., min_length=1, max_length=5000)
     category: FeedbackCategory = FeedbackCategory.GENERAL
@@ -49,7 +49,8 @@ class FeedbackResponse(BaseModel):
     pageUrl: Optional[str] = None
     status: FeedbackStatus
     priority: FeedbackPriority
-    isRead: bool
+    reply: Optional[str] = None
+    repliedAt: Optional[datetime] = None
     createdAt: datetime
     updatedAt: datetime
     
@@ -66,3 +67,4 @@ class FeedbackUpdate(BaseModel):
     status: Optional[FeedbackStatus] = None
     priority: Optional[FeedbackPriority] = None
     isRead: Optional[bool] = None
+    reply: Optional[str] = None

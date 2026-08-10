@@ -118,7 +118,7 @@ export const FeedbackHub: React.FC = () => {
         ) : items.length === 0 ? (
           <div className={styles.emptyState}>
             <MessageSquare size={48} style={{ opacity: 0.5 }} />
-            <h3>No Feedback Found</h3>
+            <h3>No feedback received yet.</h3>
             <p>No feedback messages match your current filters.</p>
           </div>
         ) : (

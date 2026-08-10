@@ -69,9 +69,10 @@ export const Settings: React.FC = () => {
     <div className={styles.container}>
       <header className={styles.header}>
         <h1 className={styles.title}>Project Settings</h1>
-        <p className={styles.subtitle}>Configure monitoring for {currentProject.name}</p>
+        <p className={styles.subtitle}>Configure monitoring settings for {currentProject.name}</p>
       </header>
 
+      {/* MONITORING CONFIGURATION CARD */}
       <Card>
         <CardHeader>
           <CardTitle>Monitoring Configuration</CardTitle>

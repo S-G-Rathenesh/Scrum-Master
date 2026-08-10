@@ -6,14 +6,6 @@ from app.database.mongodb import connect_to_mongo, close_mongo_connection
 from app.monitoring import MonitoringScheduler
 from app.core.config import settings
 
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from contextlib import asynccontextmanager
-import asyncio
-from app.database.mongodb import connect_to_mongo, close_mongo_connection
-from app.monitoring import MonitoringScheduler
-from app.core.config import settings
-
 from app.api.v1.auth import router as auth_router
 from app.api.v1.projects import router as projects_router
 from app.api.v1.health import router as health_router
@@ -25,6 +17,7 @@ from app.api.v1.integration_package import router as integration_package_router
 from app.api.v1.errors import router as errors_router
 from app.api.v1.feedback import router as feedback_router
 from app.api.v1.analytics import router as analytics_router
+from app.api.v1.notifications import router as notifications_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -39,7 +32,7 @@ async def lifespan(app: FastAPI):
     
     # Shutdown
     await scheduler.stop()
-        
+    
     await close_mongo_connection()
 
 app = FastAPI(
@@ -70,7 +63,8 @@ app.include_router(auth_router, prefix="/api/v1/auth", tags=["auth"])
 app.include_router(projects_router, prefix="/api/v1/projects", tags=["projects"])
 app.include_router(monitoring_router, prefix="/api/v1/projects", tags=["monitoring"])
 app.include_router(analytics_router, prefix="/api/v1/projects", tags=["analytics"])
-app.include_router(members_router, prefix="/api/v1/members", tags=["members"])
+app.include_router(notifications_router, prefix="/api/v1/projects", tags=["notifications"])
+app.include_router(members_router, prefix="/api/v1", tags=["members"])
 app.include_router(integration_management_router, prefix="/api/v1/projects/{project_id}/integration", tags=["integration-management"])
 app.include_router(
     errors_router,
@@ -82,5 +76,5 @@ app.include_router(
     prefix="/api/v1/projects/{project_id}/feedback",
     tags=["feedback"]
 )
-app.include_router(integration_package_router, prefix="/api/v1/projects/{project_id}/integration", tags=["integration-package"])
+app.include_router(integration_package_router, prefix="/api/v1/integration", tags=["integration-package"])
 app.include_router(integration_agent_router, prefix="/api/v1/integration", tags=["integration-agent"])

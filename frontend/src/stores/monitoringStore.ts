@@ -21,7 +21,7 @@ export const useMonitoringStore = create<MonitoringState>((set) => ({
   error: null,
 
   fetchDashboardData: async (projectId: string) => {
-    set({ isLoading: true, error: null });
+    set({ isLoading: true, error: null, uptime: null, incidents: [], history: [] }); // Clear stale data
     try {
       const [uptime, incidents, history] = await Promise.all([
         monitoringService.getUptime(projectId, 1),

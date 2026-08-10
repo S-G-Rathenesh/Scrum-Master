@@ -1,13 +1,17 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Bell, User, Menu } from 'lucide-react';
 import { ProjectSwitcher } from './ProjectSwitcher';
 import { useAuthStore } from '../../stores/authStore';
 import { useUIStore } from '../../stores/uiStore';
+import { useNotificationStore } from '../../stores/notificationStore';
 import styles from './Topbar.module.css';
 
 export const Topbar: React.FC = () => {
+  const navigate = useNavigate();
   const { user, logout } = useAuthStore();
   const { toggleSidebar } = useUIStore();
+  const { unreadCount } = useNotificationStore();
   const [showProfileMenu, setShowProfileMenu] = React.useState(false);
 
   return (
@@ -20,9 +24,18 @@ export const Topbar: React.FC = () => {
       </div>
 
       <div className={styles.right}>
-        <button className={styles.iconBtn}>
+        <button 
+          className={styles.iconBtn} 
+          onClick={() => navigate('/notifications')}
+          title="Notifications"
+          aria-label={`Notifications (${unreadCount} unread)`}
+        >
           <Bell size={18} />
-          <span className={styles.badge} />
+          {unreadCount > 0 && (
+            <span className={styles.badge} style={{ width: 'auto', minWidth: '18px', height: '18px', padding: '0 4px', fontSize: '0.7rem', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '9999px', background: 'var(--color-primary)', color: '#080A0F' }}>
+              {unreadCount > 99 ? '99+' : unreadCount}
+            </span>
+          )}
         </button>
         
         <div className={styles.profileContainer}>

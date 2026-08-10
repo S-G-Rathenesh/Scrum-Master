@@ -1,13 +1,15 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ChevronDown, Plus, Check } from 'lucide-react';
 import { useProjectStore } from '../../stores/projectStore';
-import styles from './ProjectSwitcher.module.css';
 import { useNavigate } from 'react-router-dom';
+import { CreateProjectModal } from '../../pages/Projects/CreateProjectModal';
+import styles from './ProjectSwitcher.module.css';
 
 export const ProjectSwitcher: React.FC = () => {
   const { projects, currentProject, selectProjectById } = useProjectStore();
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
+  const [showCreateModal, setShowCreateModal] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
@@ -33,88 +35,94 @@ export const ProjectSwitcher: React.FC = () => {
   };
 
   return (
-    <div className={styles.container} ref={dropdownRef}>
-      <button className={styles.button} onClick={() => setIsOpen(!isOpen)}>
-        {currentProject ? (
-          <>
-            <span className={styles.projectIcon}>
-              {getStatusColor(currentProject.status, currentProject.integrationStatus)}
-            </span>
-            <span className={styles.projectName}>
-              {currentProject.name}
-              {currentProject.integrationStatus === 'WAITING' && (
-                <span style={{ opacity: 0.7, fontSize: '0.85em', marginLeft: '6px' }}>• Waiting</span>
-              )}
-            </span>
-          </>
-        ) : (
-          <span className={styles.projectName}>Select Project</span>
-        )}
-        <ChevronDown size={16} className={styles.chevron} />
-      </button>
+    <>
+      <div className={styles.container} ref={dropdownRef}>
+        <button className={styles.button} onClick={() => setIsOpen(!isOpen)}>
+          {currentProject ? (
+            <>
+              <span className={styles.projectIcon}>
+                {getStatusColor(currentProject.status, currentProject.integrationStatus)}
+              </span>
+              <span className={styles.projectName}>
+                {currentProject.name}
+                {currentProject.integrationStatus === 'WAITING' && (
+                  <span style={{ opacity: 0.7, fontSize: '0.85em', marginLeft: '6px' }}>• Waiting</span>
+                )}
+              </span>
+            </>
+          ) : (
+            <span className={styles.projectName}>Select Project</span>
+          )}
+          <ChevronDown size={16} className={styles.chevron} />
+        </button>
 
-      {isOpen && (
-        <div className={styles.dropdown}>
-          <div className={styles.searchContainer}>
-            <input
-              type="text"
-              placeholder="Search projects..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className={styles.searchInput}
-              autoFocus
-            />
-          </div>
+        {isOpen && (
+          <div className={styles.dropdown}>
+            <div className={styles.searchContainer}>
+              <input
+                type="text"
+                placeholder="Search projects..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className={styles.searchInput}
+                autoFocus
+              />
+            </div>
 
-          <div className={styles.projectList}>
-            {filteredProjects.length > 0 ? (
-              filteredProjects.map((project) => (
-                <button
-                  key={project.id}
-                  className={styles.projectItem}
-                  onClick={() => {
-                    selectProjectById(project.id);
-                    setIsOpen(false);
-                    if (project.integrationStatus !== 'CONNECTED') {
-                      navigate('/setup');
-                    } else {
-                      navigate('/dashboard');
-                    }
-                  }}
-                >
-                  <span className={styles.projectIcon}>
-                    {getStatusColor(project.status, project.integrationStatus)}
-                  </span>
-                  <span className={styles.projectItemName}>
-                    {project.name}
-                    {project.integrationStatus === 'WAITING' && (
-                      <span style={{ opacity: 0.7, fontSize: '0.85em', marginLeft: '6px' }}>• Waiting</span>
+            <div className={styles.projectList}>
+              {filteredProjects.length > 0 ? (
+                filteredProjects.map((project) => (
+                  <button
+                    key={project.id}
+                    className={styles.projectItem}
+                    onClick={() => {
+                      selectProjectById(project.id);
+                      setIsOpen(false);
+                      if (project.integrationStatus !== 'CONNECTED') {
+                        navigate('/setup');
+                      } else {
+                        navigate('/dashboard');
+                      }
+                    }}
+                  >
+                    <span className={styles.projectIcon}>
+                      {getStatusColor(project.status, project.integrationStatus)}
+                    </span>
+                    <span className={styles.projectItemName}>
+                      {project.name}
+                      {project.integrationStatus === 'WAITING' && (
+                        <span style={{ opacity: 0.7, fontSize: '0.85em', marginLeft: '6px' }}>• Waiting</span>
+                      )}
+                    </span>
+                    {currentProject?.id === project.id && (
+                      <Check size={16} className={styles.checkIcon} />
                     )}
-                  </span>
-                  {currentProject?.id === project.id && (
-                    <Check size={16} className={styles.checkIcon} />
-                  )}
-                </button>
-              ))
-            ) : (
-              <div className={styles.emptyState}>No projects found</div>
-            )}
-          </div>
+                  </button>
+                ))
+              ) : (
+                <div className={styles.emptyState}>No projects found</div>
+              )}
+            </div>
 
-          <div className={styles.footer}>
-            <button 
-              className={styles.addBtn}
-              onClick={() => {
-                setIsOpen(false);
-                navigate('/setup?new=true');
-              }}
-            >
-              <Plus size={16} />
-              <span>Add Project</span>
-            </button>
+            <div className={styles.footer}>
+              <button 
+                className={styles.addBtn}
+                onClick={() => {
+                  setIsOpen(false);
+                  setShowCreateModal(true);
+                }}
+              >
+                <Plus size={16} />
+                <span>Add Project</span>
+              </button>
+            </div>
           </div>
-        </div>
+        )}
+      </div>
+      
+      {showCreateModal && (
+        <CreateProjectModal onClose={() => setShowCreateModal(false)} />
       )}
-    </div>
+    </>
   );
 };

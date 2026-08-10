@@ -18,6 +18,7 @@ import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { useUIStore } from '../../stores/uiStore';
 import { useFeedbackStore } from '../../stores/feedbackStore';
+import { useNotificationStore } from '../../stores/notificationStore';
 import { useProjectStore } from '../../stores/projectStore';
 import logo from '../../assets/scrum master logo.png';
 
@@ -28,32 +29,34 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
   const { setSidebarOpen } = useUIStore();
   const { unreadCount, fetchUnreadCount } = useFeedbackStore();
+  const { unreadCount: notifUnreadCount, fetchUnreadCount: fetchNotifUnreadCount } = useNotificationStore();
   const { currentProject } = useProjectStore();
 
   React.useEffect(() => {
     if (currentProject) {
       fetchUnreadCount(currentProject.id);
+      fetchNotifUnreadCount(currentProject.id);
     }
-  }, [currentProject, fetchUnreadCount]);
+  }, [currentProject, fetchUnreadCount, fetchNotifUnreadCount]);
   
   const mainNav = [
-    { name: 'Dashboard', to: '/dashboard', icon: LayoutDashboard },
-    { name: 'Projects', to: '/projects', icon: FolderKanban },
-    { name: 'Analytics', to: '/analytics', icon: LineChart },
-    { name: 'Errors', to: '/errors', icon: AlertCircle },
-    { name: 'API Health', to: '/api-health', icon: Activity },
-    { name: 'Performance', to: '/performance', icon: Zap, disabled: true },
-    { name: 'Feedback', to: '/feedback', icon: MessageSquare, badge: unreadCount > 0 ? unreadCount : undefined },
-    { name: 'Notifications', to: '/notifications', icon: Bell, disabled: true },
+    { name: 'Dashboard', to: '/dashboard', icon: LayoutDashboard, channel: '01' },
+    { name: 'Projects', to: '/projects', icon: FolderKanban, channel: '02' },
+    { name: 'Analytics', to: '/analytics', icon: LineChart, channel: '03' },
+    { name: 'Errors', to: '/errors', icon: AlertCircle, channel: '04' },
+    { name: 'API Health', to: '/api-health', icon: Activity, channel: '05' },
+    { name: 'Performance', to: '/performance', icon: Zap, disabled: true, channel: '06' },
+    { name: 'Feedback', to: '/feedback', icon: MessageSquare, badge: unreadCount > 0 ? unreadCount : undefined, channel: '07' },
+    { name: 'Notifications', to: '/notifications', icon: Bell, badge: notifUnreadCount > 0 ? notifUnreadCount : undefined, channel: '08' },
   ];
 
   const setupNav = [
-    { name: 'Setup Scrum Master', to: '/setup', icon: Plug },
+    { name: 'Setup Scrum Master', to: '/setup', icon: Plug, channel: '09' },
   ];
 
   const settingsNav = [
-    { name: 'Members', to: '/members', icon: Users },
-    { name: 'Settings', to: '/settings', icon: Settings },
+    { name: 'Members', to: '/members', icon: Users, channel: '10' },
+    { name: 'Settings', to: '/settings', icon: Settings, channel: '11' },
   ];
 
   const renderNavItems = (items: typeof mainNav) => (
@@ -73,16 +76,17 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
               }
             }}
           >
-            <item.icon className={styles.navIcon} size={18} />
+            <item.icon className={styles.navIcon} size={16} />
             <span style={{ flex: 1 }}>{item.name}</span>
             {item.badge && (
               <span style={{ 
-                background: 'var(--primary-color)', 
-                color: 'white', 
-                fontSize: '0.75rem', 
-                padding: '0.1rem 0.4rem', 
-                borderRadius: '10px',
-                fontWeight: 'bold'
+                background: 'var(--color-primary)', 
+                color: '#080A0F', 
+                fontSize: '0.7rem', 
+                padding: '0.05rem 0.35rem', 
+                borderRadius: '4px',
+                fontWeight: 'bold',
+                fontFamily: 'var(--font-mono)'
               }}>
                 {item.badge}
               </span>
@@ -100,14 +104,17 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
       </div>
 
       <nav className={styles.nav}>
+        <div className={styles.sectionLabel}>CHANNELS</div>
         {renderNavItems(mainNav)}
         
         <hr className={styles.separator} />
         
+        <div className={styles.sectionLabel}>INTEGRATION</div>
         {renderNavItems(setupNav)}
         
         <hr className={styles.separator} />
         
+        <div className={styles.sectionLabel}>WORKSPACE</div>
         {renderNavItems(settingsNav)}
       </nav>
     </aside>

@@ -5,12 +5,14 @@ import { Button } from '../../components/common/Button';
 import { Card, CardContent } from '../../components/common/Card';
 import { Badge } from '../../components/common/Badge';
 import { Plus, Search, FolderKanban } from 'lucide-react';
+import { CreateProjectModal } from './CreateProjectModal';
 import styles from './Projects.module.css';
 
 export const Projects: React.FC = () => {
   const { projects, fetchProjects, isLoading, selectProjectById } = useProjectStore();
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   useEffect(() => {
     fetchProjects();
@@ -27,7 +29,7 @@ export const Projects: React.FC = () => {
           <h1 className={styles.title}>Projects</h1>
           <p className={styles.subtitle}>Manage your monitored applications</p>
         </div>
-        <Button onClick={() => navigate('/setup?new=true')}>
+        <Button onClick={() => setShowCreateModal(true)}>
           <Plus size={16} className={styles.btnIcon} style={{ marginRight: '0.5rem' }} />
           Add Project
         </Button>
@@ -94,6 +96,10 @@ export const Projects: React.FC = () => {
           </div>
         )}
       </div>
+      
+      {showCreateModal && (
+        <CreateProjectModal onClose={() => setShowCreateModal(false)} />
+      )}
     </div>
   );
 };

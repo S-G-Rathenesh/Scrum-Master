@@ -28,7 +28,7 @@ interface FeedbackState {
   setFilters: (filters: Partial<FeedbackFilters>) => void;
   fetchFeedback: (projectId: string) => Promise<void>;
   fetchFeedbackDetail: (projectId: string, feedbackId: string) => Promise<void>;
-  updateFeedbackStatus: (projectId: string, feedbackId: string, updates: { status?: FeedbackStatus, priority?: FeedbackPriority, isRead?: boolean }) => Promise<void>;
+  updateFeedbackStatus: (projectId: string, feedbackId: string, updates: { status?: FeedbackStatus, priority?: FeedbackPriority, isRead?: boolean, reply?: string }) => Promise<void>;
   fetchUnreadCount: (projectId: string) => Promise<void>;
   reset: () => void;
 }
@@ -57,7 +57,7 @@ export const useFeedbackStore = create<FeedbackState>((set, get) => ({
   },
 
   fetchFeedback: async (projectId) => {
-    set({ isLoading: true });
+    set({ isLoading: true, items: [], total: 0, currentFeedback: null }); // Clear stale data
     try {
       const { filters } = get();
       const res = await feedbackService.getFeedback(projectId, filters);

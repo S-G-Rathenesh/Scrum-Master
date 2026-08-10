@@ -14,9 +14,14 @@ router = APIRouter()
 class GoogleLoginRequest(BaseModel):
     credential: str
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 @router.post("/login/google", response_model=Token)
 async def google_login(request: GoogleLoginRequest, db=Depends(get_database)):
     if not settings.GOOGLE_CLIENT_ID:
+        logger.error("Google Authentication is not configured on the server.")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Google Authentication is not configured on the server."
@@ -26,14 +31,27 @@ async def google_login(request: GoogleLoginRequest, db=Depends(get_database)):
         idinfo = id_token.verify_oauth2_token(
             request.credential, requests.Request(), settings.GOOGLE_CLIENT_ID
         )
+    except ValueError as e:
+        logger.warning(f"Google ID token verification failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid Google credentials"
+        )
+    except Exception as e:
+        logger.error(f"Unexpected error during Google token verification: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Google token verification failed"
+        )
+
+    email = idinfo.get("email")
+    name = idinfo.get("name")
+    picture = idinfo.get("picture")
+    
+    if not email:
+        raise HTTPException(status_code=400, detail="No email provided by Google")
         
-        email = idinfo.get("email")
-        name = idinfo.get("name")
-        picture = idinfo.get("picture")
-        
-        if not email:
-            raise HTTPException(status_code=400, detail="No email provided by Google")
-            
+    try:
         # Check if user exists
         user = await db.users.find_one({"email": email})
         
@@ -61,12 +79,11 @@ async def google_login(request: GoogleLoginRequest, db=Depends(get_database)):
         # Create JWT token
         access_token = create_access_token(subject=user_id)
         return {"access_token": access_token, "token_type": "bearer"}
-        
-    except ValueError:
-        # Invalid token
+    except Exception as e:
+        logger.error(f"Database/Auth error during user creation/lookup: {e}")
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid Google credentials"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to process user authentication"
         )
 
 @router.get("/me", response_model=UserResponse)

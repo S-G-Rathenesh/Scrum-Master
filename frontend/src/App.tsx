@@ -17,8 +17,11 @@ import { ErrorDetail } from './pages/ErrorCenter/ErrorDetail';
 import { FeedbackHub } from './pages/FeedbackHub/FeedbackHub';
 import { FeedbackDetail } from './pages/FeedbackHub/FeedbackDetail';
 import { Analytics } from './pages/Analytics/Analytics';
+import { Notifications } from './pages/Notifications/Notifications';
 
+import { Members } from './pages/Members/Members';
 import { Landing } from './pages/Landing/Landing';
+import { Signup } from './pages/Signup/Signup';
 
 const PlaceholderPage = ({ title }: { title: string }) => (
   <div style={{ padding: '2rem', textAlign: 'center' }}>
@@ -47,6 +50,7 @@ function App() {
       <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
         
         <Route path="/" element={<MainLayout />}>
           <Route path="dashboard" element={<Dashboard />} />
@@ -61,8 +65,8 @@ function App() {
           <Route path="feedback/:id" element={<FeedbackDetail />} />
           <Route path="api-health" element={<ApiHealth />} />
           <Route path="performance" element={<PlaceholderPage title="Performance Monitoring" />} />
-          <Route path="notifications" element={<PlaceholderPage title="Notifications" />} />
-          <Route path="members" element={<PlaceholderPage title="Members" />} />
+          <Route path="notifications" element={<Notifications />} />
+          <Route path="members" element={<Members />} />
           <Route path="settings" element={<Settings />} />
         </Route>
         

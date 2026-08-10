@@ -102,7 +102,7 @@ export const useAnalyticsStore = create<AnalyticsState>((set, get) => ({
   fetchAnalytics: async (projectId: string) => {
     if (!projectId) return;
     
-    set({ isLoading: true, error: null });
+    set({ isLoading: true, error: null, overview: null }); // Clear previous overview
     try {
       const timeRange = get().timeRange;
       const response = await api.get(`/projects/${projectId}/analytics/overview?timeRange=${timeRange}`);

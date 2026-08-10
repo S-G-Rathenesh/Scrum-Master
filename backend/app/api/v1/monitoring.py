@@ -37,7 +37,7 @@ async def update_monitoring_settings(
     if update_dict:
         update_dict["updatedAt"] = datetime.now(timezone.utc)
         await db.projects.update_one(
-            {"_id": project["_id"]},
+            {"_id": project["_id"], "ownerId": current_user.id},
             {"$set": update_dict}
         )
         

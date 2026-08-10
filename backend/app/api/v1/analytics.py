@@ -8,6 +8,7 @@ from bson import ObjectId
 
 router = APIRouter()
 
+@router.get("/{project_id}/analytics/overview", response_model=AnalyticsOverviewResponse)
 @router.get("/{project_id}/overview", response_model=AnalyticsOverviewResponse)
 async def get_analytics_overview(
     project_id: str,

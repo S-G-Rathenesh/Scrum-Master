@@ -26,10 +26,11 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       
       const currentId = localStorage.getItem('currentProjectId');
       if (currentId && projects.some(p => p.id === currentId)) {
-        get().selectProjectById(currentId);
+        // Just rely on the existing ID if valid
+        const p = projects.find(p => p.id === currentId);
+        set({ currentProject: p });
       } else if (projects.length > 0) {
-        set({ currentProject: projects[0] });
-        localStorage.setItem('currentProjectId', projects[0].id);
+        get().selectProjectById(projects[0].id);
       }
     } catch (error: any) {
       set({ error: error.message || 'Failed to fetch projects', isLoading: false });
@@ -37,6 +38,9 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   },
   
   setCurrentProject: (project) => {
+    const prevProject = get().currentProject;
+    if (project?.id === prevProject?.id) return; // Prevent unnecessary clears
+    
     if (project) {
       localStorage.setItem('currentProjectId', project.id);
     } else {
@@ -46,7 +50,9 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   },
   
   selectProjectById: (id) => {
-    const { projects } = get();
+    const { projects, currentProject } = get();
+    if (currentProject?.id === id) return; // Already selected
+    
     const project = projects.find(p => p.id === id);
     if (project) {
       localStorage.setItem('currentProjectId', project.id);

@@ -19,6 +19,8 @@ export interface FeedbackResponse {
   status: FeedbackStatus;
   priority: FeedbackPriority;
   isRead: boolean;
+  reply?: string;
+  repliedAt?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -58,8 +60,25 @@ export const feedbackService = {
       status?: FeedbackStatus;
       priority?: FeedbackPriority;
       isRead?: boolean;
+      reply?: string;
     }
   ): Promise<void> => {
     await api.patch(`/projects/${projectId}/feedback/${feedbackId}`, data);
+  },
+
+  submitFeedback: async (
+    projectId: string,
+    data: {
+      email?: string;
+      message: string;
+      category?: string;
+      source?: string;
+      name?: string;
+      subject?: string;
+      pageUrl?: string;
+    }
+  ): Promise<{ status: string; feedbackId?: string }> => {
+    const response = await api.post(`/projects/${projectId}/feedback`, data);
+    return response.data;
   }
 };

@@ -1,271 +1,565 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useProjectStore } from '../../stores/projectStore';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/common/Card';
+import { projectService } from '../../services/projects';
 import { Button } from '../../components/common/Button';
-import { Download, Copy, Check, CheckCircle2, ChevronRight } from 'lucide-react';
+import { SignalLine } from '../../components/common/SignalLine';
+import { StatusIndicator } from '../../components/common/StatusIndicator';
+import { Download, Copy, Check, CheckCircle2, AlertTriangle, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import styles from './Setup.module.css';
 
+/* ─────────────────────────────────────────────────────────────
+   STATIC CONTENT
+   ───────────────────────────────────────────────────────────── */
+
+const PACKAGE_TREE = `scrum-master.zip
+└── scrum-master/
+    ├── scrum-master-agent.js
+    ├── scrum-master.config.example
+    ├── README.md
+    └── SCRUM_MASTER_INSTRUCTIONS.md`;
+
+const DIR_TREE = `my-existing-application/
+├── src/
+├── package.json
+├── ...
+└── scrum-master/
+    ├── scrum-master-agent.js
+    ├── scrum-master.config.example
+    ├── README.md
+    └── SCRUM_MASTER_INSTRUCTIONS.md`;
+
+const ANTIGRAVITY_PROMPT = `I have added a \`scrum-master/\` folder to the root of this existing application.
+
+Integrate Scrum Master into this application using the files inside the \`scrum-master/\` folder.
+
+IMPORTANT RULES:
+
+1. First inspect the entire existing application structure.
+2. Read:
+   - scrum-master/README.md
+   - scrum-master/SCRUM_MASTER_INSTRUCTIONS.md
+   - scrum-master/scrum-master-agent.js
+   - scrum-master/scrum-master.config.example
+3. Understand the existing framework, frontend, backend, package manager, scripts, entry points, and application startup flow before making changes.
+4. Do NOT replace the existing application architecture.
+5. Do NOT rewrite the application.
+6. Do NOT remove existing functionality.
+7. Do NOT modify unrelated application files.
+8. Do NOT change existing authentication, routing, database logic, APIs, business logic, or UI unless required for Scrum Master integration.
+9. Keep the Scrum Master integration isolated inside the \`scrum-master/\` directory whenever possible.
+10. Configure the application to run the Scrum Master agent using the instructions provided in the integration package.
+11. Use the provided Scrum Master configuration/enrollment mechanism.
+12. Do NOT hard-code tokens, passwords, API keys, database credentials, or secrets into source code.
+13. Use environment variables where configuration is required.
+14. Preserve the application's existing development and production startup commands.
+15. If a package/dependency is required, install only the minimum necessary dependency.
+16. If the project already has an equivalent dependency or mechanism, reuse it instead of creating a duplicate.
+17. Make the smallest safe changes required to connect Scrum Master.
+18. Verify that the existing application still starts correctly after integration.
+19. Verify that the Scrum Master agent can start alongside the existing application.
+20. Do not claim success until the integration has actually been tested.
+
+After integration:
+
+- explain exactly which files were changed
+- explain which command starts the Scrum Master agent
+- explain any environment variables that must be configured
+- start/restart the application if appropriate
+- verify that the Scrum Master agent successfully enrolls with the Scrum Master server
+- report the actual connection/enrollment result
+
+The existing application must continue working exactly as before, with Scrum Master added as an observability/integration layer.`;
+
+/* ─────────────────────────────────────────────────────────────
+   TYPES
+   ───────────────────────────────────────────────────────────── */
+
+interface DetectedApp {
+  name: string;
+  id: string;
+  framework?: string;
+  backend?: string;
+  environment?: string;
+  lastConnectedAt?: string;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   COMPONENT
+   ───────────────────────────────────────────────────────────── */
+
 export const Setup: React.FC = () => {
-  const { currentProject, projects, fetchProjects, selectProjectById } = useProjectStore();
+  const { currentProject, fetchProjects, selectProjectById } = useProjectStore();
   const navigate = useNavigate();
-  
-  const [currentStep, setCurrentStep] = useState<number>(1);
-  const [copied, setCopied] = useState(false);
+
+  /* ── State ─────────────────────────────────────────────── */
+  const [activeStep, setActiveStep] = useState<number>(() => {
+    if (currentProject?.integrationStatus === 'CONNECTED') return 5;
+    if (currentProject?.integrationStatus === 'WAITING') return 4;
+    return 1;
+  });
+
+  // Which steps are logically "done"
+  const [stepsCompleted, setStepsCompleted] = useState<Record<number, boolean>>({});
+
+  // Step 1
   const [isDownloading, setIsDownloading] = useState(false);
-  
-  // Track the initial number of projects to detect when a new one is auto-provisioned
-  const [initialProjectCount] = useState(projects.length);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
 
-  const instructionText = "Read SCRUM_MASTER_INSTRUCTIONS.md and integrate Scrum Master into this project.";
+  // Step 2 (manual mark)
+  // Step 3
+  const [copiedPrompt, setCopiedPrompt] = useState(false);
+  const [copiedTree, setCopiedTree] = useState(false);
 
+  // Step 4
+  const [detectedApp, setDetectedApp] = useState<DetectedApp | null>(null);
+
+  /* ── Sync from project store ───────────────────────────── */
   useEffect(() => {
-    let pollInterval: number;
-    
-    if (currentStep === 4) {
-      // Determine if a new project was added
-      if (projects.length > initialProjectCount) {
-        // Find the new project and select it
-        // The newly provisioned project will usually be at index 0 (assuming sort desc by createdAt)
-        const newProject = projects[0];
-        if (newProject && newProject.id !== currentProject?.id) {
-          selectProjectById(newProject.id);
-          setCurrentStep(5);
+    if (currentProject?.integrationStatus === 'CONNECTED') {
+      setActiveStep(5);
+      setStepsCompleted({ 1: true, 2: true, 3: true, 4: true });
+    } else if (currentProject?.integrationStatus === 'WAITING' && activeStep < 4) {
+      setActiveStep(4);
+    }
+  }, [currentProject]);
+
+  /* ── Handshake Polling (step ≥ 4) ──────────────────────── */
+  useEffect(() => {
+    let interval: number;
+
+    if (activeStep >= 4 && activeStep < 5) {
+      const poll = async () => {
+        await fetchProjects();
+
+        // Check current project
+        if (currentProject) {
+          try {
+            const st = await projectService.getIntegrationStatus(currentProject.id);
+            if (st.status === 'CONNECTED') {
+              onSignalEstablished({
+                name: currentProject.name,
+                id: currentProject.id,
+                framework: (currentProject as any).framework,
+                backend: (currentProject as any).backend,
+                environment: (currentProject as any).environment,
+                lastConnectedAt: st.lastHeartbeatAt || new Date().toISOString(),
+              });
+              return;
+            }
+          } catch {
+            /* ignore transient */
+          }
         }
-      } else {
-        // Poll every 5 seconds for new projects from the heartbeat
-        pollInterval = window.setInterval(() => {
-          fetchProjects();
-        }, 5000);
-      }
+
+        // Check any newly provisioned project
+        const all = useProjectStore.getState().projects;
+        const connected = all.find((p) => p.integrationStatus === 'CONNECTED');
+        if (connected) {
+          selectProjectById(connected.id);
+          onSignalEstablished({
+            name: connected.name,
+            id: connected.id,
+            framework: (connected as any).framework,
+            backend: (connected as any).backend,
+            environment: (connected as any).environment,
+            lastConnectedAt: (connected as any).lastConnectedAt || new Date().toISOString(),
+          });
+        }
+      };
+
+      poll();
+      interval = window.setInterval(poll, 3000);
     }
 
     return () => {
-      if (pollInterval) clearInterval(pollInterval);
+      if (interval) clearInterval(interval);
     };
-  }, [projects, initialProjectCount, fetchProjects, selectProjectById, currentProject, currentStep]);
+  }, [activeStep, currentProject, fetchProjects, selectProjectById]);
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(instructionText);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  /* ── Helpers ───────────────────────────────────────────── */
+
+  const onSignalEstablished = (app: DetectedApp) => {
+    setDetectedApp(app);
+    setActiveStep(5);
+    setStepsCompleted((prev) => ({ ...prev, 1: true, 2: true, 3: true, 4: true }));
   };
-  
+
+  const completeStep = useCallback(
+    (step: number) => {
+      setStepsCompleted((prev) => ({ ...prev, [step]: true }));
+      if (activeStep <= step) setActiveStep(step + 1);
+    },
+    [activeStep],
+  );
+
+  /* ── Download ──────────────────────────────────────────── */
   const handleDownload = async () => {
     setIsDownloading(true);
+    setDownloadError(null);
+
     try {
       const token = localStorage.getItem('token') || '';
-      
-      const response = await fetch('http://localhost:8000/api/v1/integration/enrollment-package', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+      if (!token) throw new Error('Authentication session expired. Please sign in again.');
+
+      const res = await fetch('http://localhost:8000/api/v1/integration/enrollment-package', {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${token}` },
       });
-      
-      if (!response.ok) throw new Error("Failed to download package");
-      
-      const blob = await response.blob();
+
+      if (!res.ok) {
+        let msg = 'Unable to download the Scrum Master integration package.';
+        try {
+          const err = await res.json();
+          if (err.detail) msg = typeof err.detail === 'string' ? err.detail : JSON.stringify(err.detail);
+        } catch {
+          msg = `Server error (${res.status} ${res.statusText})`;
+        }
+        throw new Error(msg);
+      }
+
+      const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = "scrum-master-integration-package.zip";
+      a.download = 'scrum-master.zip';
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
       a.remove();
-      
-      // Auto-advance after download
-      setCurrentStep(2);
-    } catch (error) {
-      console.error(error);
-      alert("Failed to download integration package.");
+
+      completeStep(1);
+    } catch (e: any) {
+      setDownloadError(e.message || 'Failed to download integration package.');
     } finally {
       setIsDownloading(false);
     }
   };
 
-  // Helper to render step number indicator
-  const renderStepIndicator = (stepNumber: number) => {
-    const isCompleted = currentStep > stepNumber;
-    const isActive = currentStep === stepNumber;
-    
+  const handleCopyPrompt = () => {
+    navigator.clipboard.writeText(ANTIGRAVITY_PROMPT);
+    setCopiedPrompt(true);
+    setTimeout(() => setCopiedPrompt(false), 2000);
+  };
+
+  const handleCopyTree = () => {
+    navigator.clipboard.writeText(DIR_TREE);
+    setCopiedTree(true);
+    setTimeout(() => setCopiedTree(false), 2000);
+  };
+
+  /* ── Step indicator (number / check) ───────────────────── */
+  const renderIndicator = (n: number) => {
+    const done = stepsCompleted[n] || activeStep > n;
+    const active = activeStep === n;
     return (
-      <div className={`${styles.stepIndicator} ${isCompleted ? styles.stepCompleted : ''} ${isActive ? styles.stepActive : ''}`}>
-        {isCompleted ? <Check size={16} /> : stepNumber}
+      <div
+        className={`${styles.stepIndicator} ${done ? styles.stepCompleted : ''} ${active ? styles.stepActive : ''}`}
+      >
+        {done ? <Check size={14} /> : n}
       </div>
     );
   };
 
-  // SUCCESS STATE (If a project is recently connected or already selected and connected)
-  if (currentProject && currentProject.integrationStatus === 'CONNECTED' || currentStep === 5) {
-    return (
-      <div className={styles.container}>
-        <div className={styles.successStateWrapper} style={{ textAlign: 'center', padding: '4rem 2rem' }}>
-          <CheckCircle2 size={64} style={{ color: 'var(--success-color)', margin: '0 auto 1.5rem' }} />
-          <h1 style={{ fontSize: '2rem', marginBottom: '1rem' }}>Project Connected</h1>
-          <p style={{ color: 'var(--text-muted)', marginBottom: '2rem', fontSize: '1.1rem' }}>
-            Scrum Master is now receiving data from <strong>{currentProject?.name}</strong>.
-          </p>
-          <div style={{ display: 'flex', justifyContent: 'center', gap: '2rem', marginBottom: '3rem', textAlign: 'left' }}>
-            <div style={{ background: 'var(--bg-secondary)', padding: '1rem', borderRadius: 'var(--radius-md)' }}>
-              <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem', display: 'block', marginBottom: '0.25rem' }}>Connection Status</span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <div style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: 'var(--success-color)' }} />
-                <strong>Connected</strong>
-              </div>
-            </div>
-          </div>
-          <Button size="lg" onClick={() => navigate('/')}>Open Dashboard</Button>
-        </div>
-      </div>
-    );
-  }
+  /* ── Step status tag ───────────────────────────────────── */
+  const renderTag = (n: number) => {
+    const done = stepsCompleted[n] || activeStep > n;
+    const active = activeStep === n;
+    if (done) {
+      return (
+        <span className={`${styles.stepStatusTag} ${styles.tagComplete}`}>
+          <Check size={12} /> COMPLETE
+        </span>
+      );
+    }
+    if (active) {
+      return <span className={`${styles.stepStatusTag} ${styles.tagActive}`}>● ACTIVE</span>;
+    }
+    return <span className={`${styles.stepStatusTag} ${styles.tagWaiting}`}>○ WAITING</span>;
+  };
 
-  // ONBOARDING WIZARD
+  /* ── Whether card body is open ─────────────────────────── */
+  const isExpanded = (n: number) => activeStep === n || (stepsCompleted[n] && activeStep >= n);
+
+  /* ── Card helpers ──────────────────────────────────────── */
+  const cardClass = (n: number) => {
+    const done = stepsCompleted[n] || activeStep > n;
+    const active = activeStep === n;
+    return `${styles.wizardCard} ${active ? styles.wizardCardActive : ''} ${done ? styles.wizardCardCompleted : ''}`;
+  };
+
+  /* ───────────────────────────────────────────────────────────
+     RENDER
+     ─────────────────────────────────────────────────────────── */
   return (
     <div className={styles.container}>
+      {/* ── PAGE HEADER ─────────────────────────────────────── */}
       <header className={styles.header}>
-        <div>
-          <h1 className={styles.title}>Setup Scrum Master</h1>
-          <p className={styles.subtitle}>Connect your existing project to Scrum Master. No rebuild required.</p>
+        <div className={styles.headerTitleGroup}>
+          <h1 className={styles.title}>CONNECT YOUR APPLICATION</h1>
+          <p className={styles.subtitle}>
+            Add Scrum Master to your existing application in a few simple steps.
+            Your application will be registered automatically when the agent connects.
+          </p>
         </div>
+        <div className={styles.statusHeaderBadge}>● READY TO CONNECT</div>
       </header>
 
       <div className={styles.wizardContainer}>
-        {/* Step 1: Download Package */}
-        <Card className={`${styles.wizardCard} ${currentStep !== 1 ? styles.wizardCardInactive : ''}`}>
-          <CardHeader className={styles.wizardHeader}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-              {renderStepIndicator(1)}
-              <CardTitle style={{ margin: 0 }}>Connect Your Existing Project</CardTitle>
+        {/* ════════════════════════════════════════════════════
+            STEP 01 — DOWNLOAD SCRUM MASTER
+           ════════════════════════════════════════════════════ */}
+        <div className={cardClass(1)}>
+          <div className={styles.wizardHeader} onClick={() => setActiveStep(1)}>
+            <div className={styles.wizardHeaderLeft}>
+              {renderIndicator(1)}
+              <span style={{ fontWeight: 700, fontFamily: 'var(--font-mono)', fontSize: '0.92rem', color: '#F3F5F7' }}>
+                01&nbsp;&nbsp;DOWNLOAD SCRUM MASTER
+              </span>
             </div>
-          </CardHeader>
-          
-          {currentStep === 1 && (
-            <CardContent>
-              <p className={styles.stepDesc}>
-                Scrum Master connects to your existing application. You do not need to rebuild your application.
-              </p>
-              
-              <div style={{ marginTop: '1.5rem' }}>
-                <Button onClick={handleDownload} disabled={isDownloading} size="lg">
-                  <Download size={18} className={styles.btnIcon} style={{ marginRight: '0.5rem' }} />
-                  {isDownloading ? 'Generating Package...' : 'Download Integration Package'}
-                </Button>
-              </div>
-            </CardContent>
-          )}
-          
-          {currentStep > 1 && (
-            <CardContent style={{ paddingBottom: '1rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--success-color)' }}>
-                <Check size={16} />
-                <span>Integration package downloaded</span>
-              </div>
-            </CardContent>
-          )}
-        </Card>
+            {renderTag(1)}
+          </div>
 
-        {/* Step 2: Extract & Add */}
-        <Card className={`${styles.wizardCard} ${currentStep !== 2 ? styles.wizardCardInactive : ''}`}>
-          <CardHeader className={styles.wizardHeader}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-              {renderStepIndicator(2)}
-              <CardTitle style={{ margin: 0, color: currentStep < 2 ? 'var(--text-muted)' : 'inherit' }}>Add Scrum Master to Your Project</CardTitle>
-            </div>
-          </CardHeader>
-          
-          {currentStep === 2 && (
-            <CardContent>
-              <ol className={styles.instructionList}>
-                <li>Extract the downloaded package.</li>
-                <li>Copy the integration files into the ROOT of your existing project.</li>
-                <li>Open that existing project in Antigravity.</li>
-              </ol>
-              
-              <div style={{ marginTop: '2rem' }}>
-                <Button onClick={() => setCurrentStep(3)}>
-                  Continue
-                  <ChevronRight size={16} className={styles.btnIcon} style={{ marginLeft: '0.5rem' }} />
-                </Button>
-              </div>
-            </CardContent>
-          )}
-          
-          {currentStep > 2 && (
-            <CardContent style={{ paddingBottom: '1rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--success-color)' }}>
-                <Check size={16} />
-                <span>Package added to project</span>
-              </div>
-            </CardContent>
-          )}
-        </Card>
+          {isExpanded(1) && (
+            <div className={styles.cardBody}>
+              <p className={styles.stepDesc}>Download the lightweight Scrum Master integration package.</p>
 
-        {/* Step 3: Tell Antigravity */}
-        <Card className={`${styles.wizardCard} ${currentStep !== 3 ? styles.wizardCardInactive : ''}`}>
-          <CardHeader className={styles.wizardHeader}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-              {renderStepIndicator(3)}
-              <CardTitle style={{ margin: 0, color: currentStep < 3 ? 'var(--text-muted)' : 'inherit' }}>Let Antigravity Integrate Scrum Master</CardTitle>
-            </div>
-          </CardHeader>
-          
-          {currentStep === 3 && (
-            <CardContent>
-              <p className={styles.stepDesc}>
-                Tell Antigravity:
-              </p>
-              
-              <div className={styles.copyBox} style={{ margin: '1rem 0' }}>
-                <code className={styles.codeText}>{instructionText}</code>
-                <Button variant="secondary" onClick={handleCopy}>
-                  {copied ? <Check size={16} /> : <Copy size={16} />}
-                  <span className={styles.btnIcon} style={{ marginLeft: '0.5rem' }}>{copied ? 'Copied' : 'Copy Instructions'}</span>
-                </Button>
-              </div>
-              
-              <div style={{ marginTop: '2rem' }}>
-                <Button onClick={() => setCurrentStep(4)}>
-                  I've Started the Integration
-                  <ChevronRight size={16} className={styles.btnIcon} style={{ marginLeft: '0.5rem' }} />
-                </Button>
-              </div>
-            </CardContent>
-          )}
-          
-          {currentStep > 3 && (
-            <CardContent style={{ paddingBottom: '1rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--success-color)' }}>
-                <Check size={16} />
-                <span>Ready for connection</span>
-              </div>
-            </CardContent>
-          )}
-        </Card>
+              <pre className={styles.packagePreviewBox}>{PACKAGE_TREE}</pre>
 
-        {/* Step 4: Verify */}
-        <Card className={`${styles.wizardCard} ${currentStep !== 4 ? styles.wizardCardInactive : ''}`}>
-          <CardHeader className={styles.wizardHeader}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-              {renderStepIndicator(4)}
-              <CardTitle style={{ margin: 0, color: currentStep < 4 ? 'var(--text-muted)' : 'inherit' }}>Connect Your Project</CardTitle>
-            </div>
-          </CardHeader>
-          
-          {currentStep === 4 && (
-            <CardContent>
-              <p className={styles.stepDesc}>
-                Once Antigravity completes the integration and your existing application starts, Scrum Master will detect the secure handshake automatically.
-              </p>
-              
-              <div className={styles.verifyBox} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', marginTop: '2rem', padding: '2rem', backgroundColor: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)' }}>
-                <div className={styles.pulseYellow} style={{ width: 32, height: 32 }} />
-                <h3 style={{ margin: 0 }}>Waiting for your project...</h3>
+              {downloadError && (
+                <div className={styles.errorBanner}>
+                  <AlertTriangle size={18} style={{ color: '#EF4444', flexShrink: 0 }} />
+                  <div style={{ flex: 1 }}>
+                    <div className={styles.errorTitle}>PACKAGE DOWNLOAD FAILED</div>
+                    <div className={styles.errorText}>{downloadError}</div>
+                  </div>
+                  <Button size="sm" variant="outline" onClick={handleDownload} style={{ flexShrink: 0 }}>
+                    <RefreshCw size={12} style={{ marginRight: '4px' }} /> RETRY
+                  </Button>
+                </div>
+              )}
+
+              <div style={{ marginTop: '1.25rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <Button
+                  onClick={handleDownload}
+                  disabled={isDownloading}
+                  size="lg"
+                  style={{
+                    background: '#F5B942',
+                    color: '#080A0F',
+                    fontWeight: 700,
+                    fontFamily: 'var(--font-mono)',
+                  }}
+                >
+                  <Download size={16} style={{ marginRight: '0.5rem' }} />
+                  {isDownloading ? 'GENERATING PACKAGE...' : 'DOWNLOAD SCRUM-MASTER.ZIP'}
+                </Button>
+
+                {stepsCompleted[1] && (
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: '#10B981', fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '0.85rem' }}>
+                    <Check size={14} /> ✓ SCRUM-MASTER.ZIP DOWNLOADED
+                  </span>
+                )}
               </div>
-            </CardContent>
+            </div>
           )}
-        </Card>
+        </div>
+
+        {/* ════════════════════════════════════════════════════
+            STEP 02 — ADD SCRUM MASTER TO YOUR APPLICATION
+           ════════════════════════════════════════════════════ */}
+        <div className={cardClass(2)}>
+          <div className={styles.wizardHeader} onClick={() => { if (stepsCompleted[1] || activeStep >= 2) setActiveStep(2); }}>
+            <div className={styles.wizardHeaderLeft}>
+              {renderIndicator(2)}
+              <span style={{ fontWeight: 700, fontFamily: 'var(--font-mono)', fontSize: '0.92rem', color: '#F3F5F7' }}>
+                02&nbsp;&nbsp;ADD SCRUM MASTER TO YOUR APPLICATION
+              </span>
+            </div>
+            {renderTag(2)}
+          </div>
+
+          {isExpanded(2) && (
+            <div className={styles.cardBody}>
+              <p className={styles.stepDesc}>
+                Extract the downloaded package and place the Scrum Master folder inside the root of your existing application.
+              </p>
+
+              <div className={styles.instructionList}>
+                <div>1. Download <code>scrum-master.zip</code></div>
+                <div>2. Extract the ZIP file</div>
+                <div>3. Move the entire <code>scrum-master/</code> folder into the root of your existing application</div>
+              </div>
+
+              <pre className={styles.directoryTreeBox}>{DIR_TREE}</pre>
+
+              <div className={styles.warningBox}>
+                <strong style={{ color: '#F5B942' }}>IMPORTANT</strong><br />
+                Do not replace, delete, or restructure your existing application.
+                Scrum Master is added as an integration layer.
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                <Button
+                  variant="secondary"
+                  onClick={handleCopyTree}
+                  style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8rem' }}
+                >
+                  {copiedTree ? <Check size={14} /> : <Copy size={14} />}
+                  <span style={{ marginLeft: '0.4rem' }}>{copiedTree ? 'COPIED ✓' : 'COPY DIRECTORY TREE'}</span>
+                </Button>
+
+                <Button
+                  onClick={() => completeStep(2)}
+                  style={{
+                    background: stepsCompleted[2] ? '#171D27' : '#F5B942',
+                    color: stepsCompleted[2] ? '#10B981' : '#080A0F',
+                    fontWeight: 700,
+                    fontFamily: 'var(--font-mono)',
+                  }}
+                >
+                  {stepsCompleted[2] ? '✓ FOLDER ADDED' : 'FOLDER ADDED — CONTINUE →'}
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* ════════════════════════════════════════════════════
+            STEP 03 — LET ANTIGRAVITY INTEGRATE SCRUM MASTER
+           ════════════════════════════════════════════════════ */}
+        <div className={cardClass(3)}>
+          <div className={styles.wizardHeader} onClick={() => { if (stepsCompleted[2] || activeStep >= 3) setActiveStep(3); }}>
+            <div className={styles.wizardHeaderLeft}>
+              {renderIndicator(3)}
+              <span style={{ fontWeight: 700, fontFamily: 'var(--font-mono)', fontSize: '0.92rem', color: '#F3F5F7' }}>
+                03&nbsp;&nbsp;LET ANTIGRAVITY INTEGRATE SCRUM MASTER
+              </span>
+            </div>
+            {renderTag(3)}
+          </div>
+
+          {isExpanded(3) && (
+            <div className={styles.cardBody}>
+              <p className={styles.stepDesc}>
+                Open your existing application in Antigravity and use the prompt below.
+                Antigravity will inspect the Scrum Master integration files and integrate them without disrupting your existing application.
+              </p>
+
+              <div className={styles.promptBox}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.5rem' }}>
+                  <span style={{ fontSize: '0.725rem', fontFamily: 'var(--font-mono)', color: '#F5B942', fontWeight: 700, letterSpacing: '0.04em' }}>
+                    ANTIGRAVITY PROMPT
+                  </span>
+                  <Button variant="secondary" size="sm" onClick={handleCopyPrompt} style={{ fontFamily: 'var(--font-mono)', fontSize: '0.78rem' }}>
+                    {copiedPrompt ? <Check size={14} /> : <Copy size={14} />}
+                    <span style={{ marginLeft: '0.4rem' }}>{copiedPrompt ? '✓ COPIED' : 'COPY PROMPT'}</span>
+                  </Button>
+                </div>
+                <pre className={styles.promptText}>{ANTIGRAVITY_PROMPT}</pre>
+              </div>
+
+              <div style={{ marginTop: '1.25rem' }}>
+                <Button
+                  onClick={() => completeStep(3)}
+                  style={{ background: '#F5B942', color: '#080A0F', fontWeight: 700, fontFamily: 'var(--font-mono)' }}
+                >
+                  I'VE STARTED INTEGRATION →
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* ════════════════════════════════════════════════════
+            STEP 04 — ESTABLISH SIGNAL HANDSHAKE
+           ════════════════════════════════════════════════════ */}
+        <div className={cardClass(4)}>
+          <div className={styles.wizardHeader} onClick={() => { if (stepsCompleted[3] || activeStep >= 4) setActiveStep(4); }}>
+            <div className={styles.wizardHeaderLeft}>
+              {renderIndicator(4)}
+              <span style={{ fontWeight: 700, fontFamily: 'var(--font-mono)', fontSize: '0.92rem', color: '#F3F5F7' }}>
+                04&nbsp;&nbsp;ESTABLISH SIGNAL HANDSHAKE
+              </span>
+            </div>
+            {renderTag(4)}
+          </div>
+
+          {(isExpanded(4) || activeStep === 5) && (
+            <div className={styles.cardBody}>
+              <div className={styles.handshakePanel}>
+                {activeStep === 5 ? (
+                  /* ── Connected ─────────────────────────────── */
+                  <div className={styles.detectedCard}>
+                    <CheckCircle2 size={44} style={{ color: '#10B981' }} />
+                    <div className={styles.detectedTitle}>● SIGNAL ESTABLISHED</div>
+
+                    <div style={{ fontSize: '0.95rem', color: '#F3F5F7', fontWeight: 700, fontFamily: 'var(--font-mono)' }}>
+                      APPLICATION DETECTED
+                    </div>
+
+                    <div className={styles.detectedMetaGrid}>
+                      <div className={styles.detectedMetaItem}>
+                        <span className={styles.metaLabel}>Application</span>
+                        <span className={styles.metaValue}>{detectedApp?.name || currentProject?.name || 'Your Application'}</span>
+                      </div>
+                      <div className={styles.detectedMetaItem}>
+                        <span className={styles.metaLabel}>Framework</span>
+                        <span className={styles.metaValue}>{detectedApp?.framework || 'Auto-Detected'}</span>
+                      </div>
+                      <div className={styles.detectedMetaItem}>
+                        <span className={styles.metaLabel}>Backend</span>
+                        <span className={styles.metaValue}>{detectedApp?.backend || 'Auto-Detected'}</span>
+                      </div>
+                      <div className={styles.detectedMetaItem}>
+                        <span className={styles.metaLabel}>Environment</span>
+                        <span className={styles.metaValue}>{detectedApp?.environment || 'development'}</span>
+                      </div>
+                    </div>
+
+                    <span style={{ color: '#10B981', fontWeight: 700, fontFamily: 'var(--font-mono)', fontSize: '0.85rem' }}>
+                      ✓ SCRUM MASTER CONNECTED
+                    </span>
+
+                    <Button
+                      size="lg"
+                      onClick={() => navigate('/dashboard')}
+                      style={{
+                        marginTop: '0.5rem',
+                        padding: '0 2.5rem',
+                        height: '2.85rem',
+                        fontSize: '0.875rem',
+                        background: '#F5B942',
+                        color: '#080A0F',
+                        fontWeight: 700,
+                        fontFamily: 'var(--font-mono)',
+                      }}
+                    >
+                      OPEN DASHBOARD
+                    </Button>
+                  </div>
+                ) : (
+                  /* ── Waiting ──────────────────────────────── */
+                  <>
+                    <StatusIndicator status="WAITING" label="LISTENING FOR APPLICATION" size="lg" />
+                    <SignalLine color="#F5B942" height={28} animated={true} style={{ maxWidth: '400px', width: '100%' }} />
+
+                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8rem', color: '#8D96A5', marginTop: '0.5rem' }}>
+                      ENROLLMENT STATUS
+                    </div>
+                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: '#F5B942', fontWeight: 700 }}>
+                      WAITING FOR SIGNAL
+                    </div>
+
+                    <p className={styles.stepDesc} style={{ marginBottom: 0, marginTop: '0.5rem', textAlign: 'center' }}>
+                      Waiting for the Scrum Master agent to connect...
+                    </p>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
