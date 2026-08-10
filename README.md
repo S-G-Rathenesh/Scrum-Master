@@ -1,10 +1,17 @@
+<div align="center">
+  <img src="./logo.png" alt="Scrum Master Logo" width="200" />
+</div>
+
 # Scrum Master
 
 Scrum Master is a centralized project-management and monitoring platform that allows users to connect multiple hosted software projects and later monitor their health, analytics, errors, API performance, feedback, notifications, and other operational information from one dashboard.
 
-## Phase 1 & 2 - Architecture & Monitoring Engine
+## Phase Progress & Current State
 
-This repository contains the Phase 1 and Phase 2 implementations, establishing the production-ready foundation, multi-tenant database isolation, SaaS UI design system, and a robust server-side active monitoring engine.
+This repository contains implementations across multiple phases:
+- **Phase 1 & 2**: Foundation, Multi-tenant database, SaaS UI, and Monitoring Engine.
+- **Phase 4 & 5**: Error telemetry, Analytics, Operational Feedback, and Notification systems (Completed).
+- **Phase 7**: Subscription detection, Members & Access Control, and multi-project workspaces (Completed).
 
 ## Technology Stack
 
