@@ -15,7 +15,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-from app.services.enrollment_service import consume_enrollment_credential
+from app.services.enrollment_service import consume_enrollment_credential, rollback_enrollment_credential
 from app.services.integration_service import create_or_regenerate_integration
 from app.schemas.project import ProjectStatus, IntegrationStatus
 
@@ -63,65 +63,71 @@ async def enroll_application(
         
     logger.info(f"Enrollment credential verified for user {owner_id}, token {token[:15]}...")
         
-    db = get_database()
-    now = datetime.now(timezone.utc)
-    app_name = payload.application_name or (payload.metadata.get("name") if payload.metadata else "Connected Application")
-    frontend_url = payload.metadata.get("frontendUrl") if payload.metadata else None
-    backend_url = payload.metadata.get("backendUrl") if payload.metadata else None
-    
-    # Check for existing project for this user to prevent duplicate projects
-    existing = await db.projects.find_one({"ownerId": owner_id, "name": app_name})
-    if existing:
-        project_id = str(existing["_id"])
+    try:
+        db = get_database()
+        now = datetime.now(timezone.utc)
+        app_name = payload.application_name or (payload.metadata.get("name") if payload.metadata else "Connected Application")
+        frontend_url = payload.metadata.get("frontendUrl") if payload.metadata else None
+        backend_url = payload.metadata.get("backendUrl") if payload.metadata else None
         
-        # Auto-configure URLs on re-enrollment if they are provided
-        updates = {}
-        if frontend_url and not existing.get("frontendUrl"): updates["frontendUrl"] = frontend_url
-        if backend_url and not existing.get("backendUrl"): updates["backendUrl"] = backend_url
-        if frontend_url or backend_url: updates["monitoringEnabled"] = True
-        
-        if updates:
-            await db.projects.update_one({"_id": existing["_id"]}, {"$set": updates})
+        # Check for existing project for this user to prevent duplicate projects
+        existing = await db.projects.find_one({"ownerId": owner_id, "name": app_name})
+        if existing:
+            project_id = str(existing["_id"])
             
-        logger.info(f"Reusing existing project {project_id} for user {owner_id}")
-    else:
-        project_doc = {
+            # Auto-configure URLs on re-enrollment if they are provided
+            updates = {}
+            if frontend_url and not existing.get("frontendUrl"): updates["frontendUrl"] = frontend_url
+            if backend_url and not existing.get("backendUrl"): updates["backendUrl"] = backend_url
+            if frontend_url or backend_url: updates["monitoringEnabled"] = True
+            
+            if updates:
+                await db.projects.update_one({"_id": existing["_id"]}, {"$set": updates})
+                
+            logger.info(f"Reusing existing project {project_id} for user {owner_id}")
+        else:
+            project_doc = {
+                "name": app_name,
+                "ownerId": owner_id,
+                "status": ProjectStatus.ACTIVE.value,
+                "integrationStatus": IntegrationStatus.WAITING.value,
+                "framework": payload.framework,
+                "backend": payload.backend,
+                "environment": payload.environment,
+                "frontendUrl": frontend_url,
+                "backendUrl": backend_url,
+                "monitoringEnabled": bool(frontend_url or backend_url),
+                "createdAt": now,
+                "updatedAt": now
+            }
+            result = await db.projects.insert_one(project_doc)
+            project_id = str(result.inserted_id)
+            logger.info(f"Created new project {project_id} for user {owner_id}")
+
+        project_token = await create_or_regenerate_integration(project_id)
+        await process_heartbeat(project_token, payload.agent_version or "1.0.0")
+        logger.info(f"Integration activated and initial heartbeat processed for project {project_id}")
+
+        # Link the consumed enrollment to this project
+        if enrollment_id:
+            await db.enrollments.update_one(
+                {"_id": ObjectId(enrollment_id)},
+                {"$set": {"projectId": project_id}}
+            )
+
+        return {
+            "status": "ok", 
+            "projectId": project_id, 
+            "projectToken": project_token,
             "name": app_name,
-            "ownerId": owner_id,
-            "status": ProjectStatus.ACTIVE.value,
-            "integrationStatus": IntegrationStatus.PENDING.value,
             "framework": payload.framework,
-            "backend": payload.backend,
-            "environment": payload.environment,
-            "frontendUrl": frontend_url,
-            "backendUrl": backend_url,
-            "monitoringEnabled": bool(frontend_url or backend_url),
-            "createdAt": now,
-            "updatedAt": now
+            "environment": payload.environment
         }
-        result = await db.projects.insert_one(project_doc)
-        project_id = str(result.inserted_id)
-        logger.info(f"Created new project {project_id} for user {owner_id}")
-
-    project_token = await create_or_regenerate_integration(project_id)
-    await process_heartbeat(project_token, payload.agent_version or "1.0.0")
-    logger.info(f"Integration activated and initial heartbeat processed for project {project_id}")
-
-    # Link the consumed enrollment to this project
-    if enrollment_id:
-        await db.enrollments.update_one(
-            {"_id": ObjectId(enrollment_id)},
-            {"$set": {"projectId": project_id}}
-        )
-
-    return {
-        "status": "ok", 
-        "projectId": project_id, 
-        "projectToken": project_token,
-        "name": app_name,
-        "framework": payload.framework,
-        "environment": payload.environment
-    }
+    except Exception as e:
+        logger.error(f"Enrollment transaction failed, rolling back credential: {e}")
+        if enrollment_id:
+            await rollback_enrollment_credential(enrollment_id)
+        raise
 
 @router.post("/heartbeat")
 async def receive_heartbeat(

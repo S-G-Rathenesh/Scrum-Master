@@ -57,3 +57,15 @@ async def consume_enrollment_credential(raw_token: str) -> Tuple[Optional[str], 
         return result.get("ownerId"), str(result.get("_id"))
         
     return None, None
+
+async def rollback_enrollment_credential(enrollment_id: str) -> None:
+    """
+    Rolls back a consumed enrollment credential in case of a downstream failure.
+    Sets used=False and usedAt=None.
+    """
+    from bson import ObjectId
+    db = get_database()
+    await db.enrollments.update_one(
+        {"_id": ObjectId(enrollment_id)},
+        {"$set": {"used": False, "usedAt": None}}
+    )

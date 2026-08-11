@@ -113,6 +113,7 @@ async def delete_project(
     await db.monitoring_checks.delete_many({"projectId": obj_id})
     await db.incidents.delete_many({"projectId": obj_id})
     await db.integrations.delete_many({"projectId": obj_id})
+    await db.enrollments.delete_many({"projectId": project_id})
     await db.error_groups.delete_many({"projectId": obj_id})
     await db.error_events.delete_many({"projectId": obj_id})
     await db.feedback.delete_many({"projectId": obj_id})
