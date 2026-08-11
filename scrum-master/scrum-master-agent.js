@@ -15,6 +15,7 @@ class ScrumMasterAgent {
     this.isFlushing = false;
     this.isFlushingFeedback = false;
 
+    // Load token with strict priority: options -> cached file -> environment variable
     if (!this.token) {
       try {
         const tokenPath = path.resolve(process.cwd(), '.scrum-master', 'token');
@@ -149,7 +150,8 @@ class ScrumMasterAgent {
              console.warn('[Scrum Master] Failed to persist project token to disk. Cached in-memory.');
            }
         } else if (!isEnrollment) {
-           // Normal heartbeat success doesn't need to log continuously
+           // Normal heartbeat success doesn't need to log continuously, but could be useful for debug
+           // console.log('[Scrum Master] Heartbeat successful');
         }
       } else {
         if (isEnrollment) {

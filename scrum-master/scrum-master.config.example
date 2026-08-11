@@ -5,8 +5,10 @@
 SCRUM_MASTER_URL=https://api.scrummaster.rathenesh.dev
 
 # The secure integration token or enrollment credential
-SCRUM_MASTER_TOKEN=sm_enroll_PbMMZztTMMs-nRTO1byYd0uo14ZgUIBa2kyTOzKDb6U
+SCRUM_MASTER_TOKEN=sm_enroll_Kq0dQEgjRaxCf76NVw36PS_9Yh2Bnd16n6pMnddoETw
 
 # Optional metadata overrides (autodetected if omitted)
 # SCRUM_MASTER_APPLICATION_NAME=My Existing App
 # SCRUM_MASTER_ENVIRONMENT=development
+# SCRUM_MASTER_FRONTEND_URL=http://localhost:5173
+# SCRUM_MASTER_BACKEND_URL=http://localhost:8000
