@@ -496,5 +496,6 @@ async def get_setup_status(
         "framework": project.get("framework"),
         "backend": project.get("backend"),
         "environment": project.get("environment"),
-        "lastConnectedAt": project.get("lastConnectedAt")
+        "lastConnectedAt": project.get("lastConnectedAt"),
+        "integrationStatus": project.get("integrationStatus")
     }

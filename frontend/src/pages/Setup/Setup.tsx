@@ -177,7 +177,13 @@ export const Setup: React.FC = () => {
         if (data.status === 'CREATED' && activeStep < 5) {
           await fetchProjects();
           selectProjectById(data.projectId);
-          navigate('/dashboard');
+          if (data.integrationStatus === 'CONNECTED') {
+            navigate('/dashboard');
+          } else {
+            setActiveStep(5);
+            setStepsCompleted({ 1: true, 2: true, 3: true, 4: true });
+            setHandshakePhase('CREATED');
+          }
         } else if (data.has_pending_setup && data.status === 'WAITING') {
           // Restore the persistent state (Resume at Step 4)
           setActiveStep(4);
@@ -202,7 +208,7 @@ export const Setup: React.FC = () => {
   useEffect(() => {
     let interval: number;
 
-    if (activeStep >= 4 && activeStep < 5) {
+    if (activeStep >= 4 && activeStep <= 5) {
       console.log('[Setup] Starting setup-status polling...');
       const poll = async () => {
         try {
@@ -219,6 +225,14 @@ export const Setup: React.FC = () => {
 
           if (data.status === 'CREATED') {
             console.log(`[Setup] CREATED state detected! Project ID: ${data.projectId}`);
+            
+            if (data.integrationStatus === 'CONNECTED') {
+              console.log('[Setup] Connection confirmed! Navigating to dashboard...');
+              setTimeout(() => {
+                navigate('/dashboard');
+              }, 1000);
+            }
+
             setHandshakePhase(prev => {
               if (prev === 'WAITING') {
                 setTimeout(() => {
@@ -236,9 +250,6 @@ export const Setup: React.FC = () => {
                         environment: data.environment,
                         lastConnectedAt: data.lastConnectedAt || new Date().toISOString(),
                       });
-                      setTimeout(() => {
-                        navigate('/dashboard');
-                      }, 1000);
                     }, 800);
                   }, 1200);
                 }, 800);
