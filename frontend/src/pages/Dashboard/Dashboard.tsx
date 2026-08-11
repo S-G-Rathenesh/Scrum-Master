@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../components/commo
 import { Button } from '../../components/common/Button';
 import { SignalLine } from '../../components/common/SignalLine';
 import { StatusIndicator } from '../../components/common/StatusIndicator';
+import { ProjectRequiredEmptyState } from '../../components/common/ProjectRequiredEmptyState';
 import { 
   Activity, 
   AlertCircle, 
@@ -86,20 +87,7 @@ export const Dashboard: React.FC = () => {
       );
     }
     
-    return (
-      <div className={styles.emptyStateContainer}>
-        <div className={styles.emptyStateBox}>
-          <Activity size={36} className={styles.iconInfo} style={{ margin: '0 auto 1rem' }} />
-          <h2 className={styles.emptyStateTitle}>NO PROJECT SELECTED</h2>
-          <p className={styles.emptyStateDesc}>
-            Select a project from the top workspace selector or register a new system to inspect its control center.
-          </p>
-          <Button onClick={() => navigate('/setup')} variant="outline">
-            ADD PROJECT
-          </Button>
-        </div>
-      </div>
-    );
+    return <ProjectRequiredEmptyState message="Select a project to view your monitoring dashboard." />;
   }
 
   const activeIncidents = incidents.filter(i => i.status === 'open');

@@ -5,6 +5,7 @@ import { membersService, type Member } from '../../services/members';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/common/Card';
 import { Badge } from '../../components/common/Badge';
 import { Button } from '../../components/common/Button';
+import { ProjectRequiredEmptyState } from '../../components/common/ProjectRequiredEmptyState';
 import { Users, UserPlus, ShieldAlert, CheckCircle2, Trash2, Clock, ChevronDown, Check } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import styles from './Members.module.css';
@@ -148,12 +149,7 @@ export const Members: React.FC = () => {
   };
 
   if (!currentProject) {
-    return (
-      <div className={styles.container}>
-        <h2>Members</h2>
-        <p>Please select a project first.</p>
-      </div>
-    );
+    return <ProjectRequiredEmptyState message="Select a project to view project members." />;
   }
 
   const selectedRoleObj = ROLE_OPTIONS.find(r => r.value === accessLevel) || ROLE_OPTIONS[0];

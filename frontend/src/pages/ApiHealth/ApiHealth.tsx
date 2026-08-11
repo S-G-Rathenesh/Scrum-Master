@@ -3,6 +3,7 @@ import { useProjectStore } from '../../stores/projectStore';
 import { useMonitoringStore } from '../../stores/monitoringStore';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/common/Card';
 import { Badge } from '../../components/common/Badge';
+import { ProjectRequiredEmptyState } from '../../components/common/ProjectRequiredEmptyState';
 import { CheckCircle2, XCircle } from 'lucide-react';
 import styles from './ApiHealth.module.css';
 
@@ -17,12 +18,7 @@ export const ApiHealth: React.FC = () => {
   }, [currentProject?.id, fetchHistory]);
 
   if (!currentProject) {
-    return (
-      <div className={styles.container}>
-        <h2>API Health</h2>
-        <p>Please select a project first.</p>
-      </div>
-    );
+    return <ProjectRequiredEmptyState message="Select a project to monitor API health." />;
   }
 
   const backendChecks = history.filter(h => h.target === 'backend');

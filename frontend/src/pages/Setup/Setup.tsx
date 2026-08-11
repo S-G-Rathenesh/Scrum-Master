@@ -142,6 +142,10 @@ export const Setup: React.FC = () => {
           await fetchProjects();
           selectProjectById(data.projectId);
           navigate('/dashboard');
+        } else if (data.has_pending_setup && data.status === 'WAITING') {
+          // Restore the persistent state (Resume at Step 4)
+          setActiveStep(4);
+          setStepsCompleted({ 1: true, 2: true, 3: true });
         }
       } catch (err) {
         // ignore

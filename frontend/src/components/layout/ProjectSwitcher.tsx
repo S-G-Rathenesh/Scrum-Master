@@ -76,11 +76,6 @@ export const ProjectSwitcher: React.FC = () => {
                     onClick={() => {
                       selectProjectById(project.id);
                       setIsOpen(false);
-                      if (project.integrationStatus !== 'CONNECTED') {
-                        navigate('/setup');
-                      } else {
-                        navigate('/dashboard');
-                      }
                     }}
                   >
                     <span className={styles.projectIcon}>

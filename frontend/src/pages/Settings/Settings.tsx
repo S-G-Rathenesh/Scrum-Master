@@ -5,6 +5,7 @@ import { monitoringService } from '../../services/monitoring';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/common/Card';
 import { Input } from '../../components/common/Input';
 import { Button } from '../../components/common/Button';
+import { ProjectRequiredEmptyState } from '../../components/common/ProjectRequiredEmptyState';
 import styles from './Settings.module.css';
 
 export const Settings: React.FC = () => {
@@ -87,12 +88,7 @@ export const Settings: React.FC = () => {
   };
 
   if (!currentProject) {
-    return (
-      <div className={styles.container}>
-        <h2>Settings</h2>
-        <p>Please select a project first.</p>
-      </div>
-    );
+    return <ProjectRequiredEmptyState message="Select a project to configure project settings." />;
   }
 
   return (

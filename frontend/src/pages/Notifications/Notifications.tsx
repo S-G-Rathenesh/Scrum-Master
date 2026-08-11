@@ -6,6 +6,7 @@ import { Card } from '../../components/common/Card';
 import { Button } from '../../components/common/Button';
 import { Badge } from '../../components/common/Badge';
 import { EmptyState } from '../../components/common/EmptyState';
+import { ProjectRequiredEmptyState } from '../../components/common/ProjectRequiredEmptyState';
 import styles from './Notifications.module.css';
 import { 
   Bell, 
@@ -42,17 +43,7 @@ export const Notifications: React.FC = () => {
   }, [currentProject, fetchNotifications]);
 
   if (!currentProject) {
-    return (
-      <div className={styles.container}>
-        <Card style={{ padding: '3rem 2rem' }}>
-          <EmptyState
-            icon={<Bell size={44} style={{ color: 'var(--color-primary)' }} />}
-            title="No Project Selected"
-            description="Please select a project to view notifications."
-          />
-        </Card>
-      </div>
-    );
+    return <ProjectRequiredEmptyState message="Select a project to view notifications." />;
   }
 
   const filteredNotifications = notifications.filter(n => {

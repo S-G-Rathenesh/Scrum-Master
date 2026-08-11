@@ -4,6 +4,7 @@ import { useProjectStore } from '../../stores/projectStore';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/common/Card';
 import { Button } from '../../components/common/Button';
 import { EmptyState } from '../../components/common/EmptyState';
+import { ProjectRequiredEmptyState } from '../../components/common/ProjectRequiredEmptyState';
 import { StatCard } from './components/StatCard';
 import styles from './Analytics.module.css';
 import { 
@@ -53,17 +54,7 @@ export const Analytics: React.FC = () => {
   };
 
   if (!currentProject) {
-    return (
-      <div className={styles.container}>
-        <Card style={{ padding: '3rem 2rem' }}>
-          <EmptyState
-            icon={<Activity size={44} style={{ color: 'var(--color-primary)' }} />}
-            title="No Project Selected"
-            description="Please select a project from the top navigation dropdown to view application analytics."
-          />
-        </Card>
-      </div>
-    );
+    return <ProjectRequiredEmptyState message="Select a project to explore analytics and insights." />;
   }
 
   return (

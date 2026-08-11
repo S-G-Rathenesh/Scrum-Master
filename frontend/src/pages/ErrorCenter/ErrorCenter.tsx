@@ -5,6 +5,7 @@ import { useErrorStore } from '../../stores/errorStore';
 import { Card } from '../../components/common/Card';
 import { Badge } from '../../components/common/Badge';
 import { Button } from '../../components/common/Button';
+import { ProjectRequiredEmptyState } from '../../components/common/ProjectRequiredEmptyState';
 import { AlertCircle, Filter, Clock } from 'lucide-react';
 import { type ErrorSeverity, type ErrorStatus, type ErrorSource } from '../../services/errors';
 import styles from './ErrorCenter.module.css';
@@ -52,7 +53,9 @@ export const ErrorCenter: React.FC = () => {
     }
   };
 
-  if (!currentProject) return null;
+  if (!currentProject) {
+    return <ProjectRequiredEmptyState message="Select a project to view application errors." />;
+  }
 
   return (
     <div className={styles.container}>

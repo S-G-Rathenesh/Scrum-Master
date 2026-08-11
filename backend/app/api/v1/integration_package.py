@@ -405,21 +405,50 @@ async def get_setup_status(
     )
     
     if not latest_enrollment:
-        return {"status": "WAITING"}
+        return {
+            "has_pending_setup": False,
+            "step": 1,
+            "status": "WAITING",
+            "enrollment_id": None,
+            "project_id": None
+        }
+        
+    enrollment_id = str(latest_enrollment["_id"])
     
     if not latest_enrollment.get("used"):
-        return {"status": "WAITING"}
+        return {
+            "has_pending_setup": True,
+            "step": 4,
+            "status": "WAITING",
+            "enrollment_id": enrollment_id,
+            "project_id": None
+        }
         
     project_id = latest_enrollment.get("projectId")
     if not project_id:
-        return {"status": "WAITING"}
+        return {
+            "has_pending_setup": True,
+            "step": 4,
+            "status": "WAITING",
+            "enrollment_id": enrollment_id,
+            "project_id": None
+        }
         
     project = await db.projects.find_one({"_id": ObjectId(project_id)})
     if not project:
-        return {"status": "WAITING"}
+        return {
+            "has_pending_setup": True,
+            "step": 4,
+            "status": "WAITING",
+            "enrollment_id": enrollment_id,
+            "project_id": project_id
+        }
         
     return {
+        "has_pending_setup": False,
+        "step": 4,
         "status": "CREATED",
+        "enrollment_id": enrollment_id,
         "projectId": str(project["_id"]),
         "name": project.get("name"),
         "framework": project.get("framework"),

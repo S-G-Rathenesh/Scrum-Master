@@ -5,6 +5,7 @@ import { useFeedbackStore } from '../../stores/feedbackStore';
 import { Card } from '../../components/common/Card';
 import { Badge } from '../../components/common/Badge';
 import { Button } from '../../components/common/Button';
+import { ProjectRequiredEmptyState } from '../../components/common/ProjectRequiredEmptyState';
 import { MessageSquare, Filter, Clock } from 'lucide-react';
 import styles from './FeedbackHub.module.css';
 import { formatDistanceToNow } from 'date-fns';
@@ -43,7 +44,9 @@ export const FeedbackHub: React.FC = () => {
     }
   };
 
-  if (!currentProject) return null;
+  if (!currentProject) {
+    return <ProjectRequiredEmptyState message="Select a project to view feedback." />;
+  }
 
   return (
     <div className={styles.container}>
