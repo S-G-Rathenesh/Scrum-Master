@@ -1,0 +1,12 @@
+node_modules
+dist
+.env
+.env.local
+.venv
+venv
+__pycache__
+*.pyc
+.git
+.github
+frontend
+.scrum-master/token

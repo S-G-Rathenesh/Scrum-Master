@@ -35,7 +35,7 @@ async def lifespan(app: FastAPI):
     # Start Scrum Master agent if configured
     global agent_process
     if settings.SCRUM_MASTER_TOKEN:
-        agent_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../scrum-master/scrum-master-agent.js"))
+        agent_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../scrum-master/scrum-master-agent.js"))
         if os.path.exists(agent_path):
             agent_env = os.environ.copy()
             agent_env["SCRUM_MASTER_TOKEN"] = settings.SCRUM_MASTER_TOKEN
