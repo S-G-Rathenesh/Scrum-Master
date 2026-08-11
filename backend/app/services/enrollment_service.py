@@ -37,11 +37,11 @@ async def create_enrollment_credential(user_id: str) -> str:
     await db.enrollments.insert_one(enrollment_doc)
     return raw_token
 
-async def consume_enrollment_credential(raw_token: str) -> Optional[str]:
+async def consume_enrollment_credential(raw_token: str) -> Tuple[Optional[str], Optional[str]]:
     """
     Validates and consumes an enrollment token.
-    If valid and unused, returns the ownerId associated with the token.
-    If invalid or already used, returns None.
+    If valid and unused, returns (ownerId, enrollmentId) associated with the token.
+    If invalid or already used, returns (None, None).
     """
     db = get_database()
     token_hash = hash_enrollment_token(raw_token)
@@ -54,6 +54,6 @@ async def consume_enrollment_credential(raw_token: str) -> Optional[str]:
     )
     
     if result:
-        return result.get("ownerId")
+        return result.get("ownerId"), str(result.get("_id"))
         
-    return None
+    return None, None

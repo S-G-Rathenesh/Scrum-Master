@@ -1,11 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useProjectStore } from '../../stores/projectStore';
-import { projectService } from '../../services/projects';
 import { Button } from '../../components/common/Button';
 import { SignalLine } from '../../components/common/SignalLine';
 import { StatusIndicator } from '../../components/common/StatusIndicator';
 import { Download, Copy, Check, CheckCircle2, AlertTriangle, RefreshCw } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { API_BASE_URL } from '../../services/api';
 import styles from './Setup.module.css';
 
@@ -125,66 +124,80 @@ export const Setup: React.FC = () => {
     }
   }, [currentProject]);
 
+  /* ── Initial mount setup-status check ──────────────────────── */
+  useEffect(() => {
+    const checkInitialStatus = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+
+        const res = await fetch(`${API_BASE_URL}/integration/setup-status`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        
+        if (!res.ok) return;
+        const data = await res.json();
+        
+        if (data.status === 'CREATED' && activeStep < 5) {
+          await fetchProjects();
+          selectProjectById(data.projectId);
+          navigate('/dashboard');
+        }
+      } catch (err) {
+        // ignore
+      }
+    };
+    checkInitialStatus();
+  }, [navigate]);
+
   /* ── Handshake Polling (step ≥ 4) ──────────────────────── */
   useEffect(() => {
     let interval: number;
 
     if (activeStep >= 4 && activeStep < 5) {
       const poll = async () => {
-        await fetchProjects();
+        try {
+          const token = localStorage.getItem('token');
+          if (!token) return;
 
-        // Check current project
-        if (currentProject) {
-          try {
-            const st = await projectService.getIntegrationStatus(currentProject.id);
-            if (st.status === 'CONNECTED') {
-              onSignalEstablished({
-                name: currentProject.name,
-                id: currentProject.id,
-                framework: (currentProject as any).framework,
-                backend: (currentProject as any).backend,
-                environment: (currentProject as any).environment,
-                lastConnectedAt: st.lastHeartbeatAt || new Date().toISOString(),
-              });
-              return;
-            }
-          } catch {
-            /* ignore transient */
-          }
-        }
-
-        // Check any newly provisioned project
-        const all = useProjectStore.getState().projects;
-        const connected = all.find((p) => p.integrationStatus === 'CONNECTED');
-        if (connected) {
-          // If already fully connected but not started animation, run it
-          setHandshakePhase(prev => {
-            if (prev === 'WAITING') {
-              // Trigger sequence
-              setTimeout(() => {
-                setHandshakePhase('REGISTERING');
-                setTimeout(() => {
-                  setHandshakePhase('CREATED');
-                  setTimeout(() => {
-                    selectProjectById(connected.id);
-                    onSignalEstablished({
-                      name: connected.name,
-                      id: connected.id,
-                      framework: (connected as any).framework,
-                      backend: (connected as any).backend,
-                      environment: (connected as any).environment,
-                      lastConnectedAt: (connected as any).lastConnectedAt || new Date().toISOString(),
-                    });
-                    setTimeout(() => {
-                      navigate('/dashboard');
-                    }, 1000);
-                  }, 800);
-                }, 1200);
-              }, 800);
-              return 'RECEIVED';
-            }
-            return prev;
+          const res = await fetch(`${API_BASE_URL}/integration/setup-status`, {
+            headers: { Authorization: `Bearer ${token}` }
           });
+          
+          if (!res.ok) return;
+          const data = await res.json();
+
+          if (data.status === 'CREATED') {
+            setHandshakePhase(prev => {
+              if (prev === 'WAITING') {
+                setTimeout(() => {
+                  setHandshakePhase('REGISTERING');
+                  setTimeout(() => {
+                    setHandshakePhase('CREATED');
+                    setTimeout(async () => {
+                      await fetchProjects();
+                      selectProjectById(data.projectId);
+                      onSignalEstablished({
+                        name: data.name,
+                        id: data.projectId,
+                        framework: data.framework,
+                        backend: data.backend,
+                        environment: data.environment,
+                        lastConnectedAt: data.lastConnectedAt || new Date().toISOString(),
+                      });
+                      setTimeout(() => {
+                        navigate('/dashboard');
+                      }, 1000);
+                    }, 800);
+                  }, 1200);
+                }, 800);
+                return 'RECEIVED';
+              }
+              return prev;
+            });
+          }
+        } catch {
+          /* ignore transient */
         }
       };
 
@@ -195,7 +208,7 @@ export const Setup: React.FC = () => {
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [activeStep, currentProject, fetchProjects, selectProjectById]);
+  }, [activeStep, fetchProjects, selectProjectById, navigate]);
 
   /* ── Helpers ───────────────────────────────────────────── */
 
@@ -313,6 +326,15 @@ export const Setup: React.FC = () => {
      ─────────────────────────────────────────────────────────── */
   return (
     <div className={styles.container}>
+      {/* ── DYNAMIC BACK NAVIGATION ────────────────────────── */}
+      <div style={{ marginBottom: '1rem' }}>
+        {useProjectStore.getState().projects.length > 0 ? (
+          <Link to="/dashboard" style={{ color: 'var(--color-text-muted)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem' }}>← Back to Dashboard</Link>
+        ) : (
+          <Link to="/" style={{ color: 'var(--color-text-muted)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem' }}>← Back to Home</Link>
+        )}
+      </div>
+
       {/* ── PAGE HEADER ─────────────────────────────────────── */}
       <header className={styles.header}>
         <div className={styles.headerTitleGroup}>

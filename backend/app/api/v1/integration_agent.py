@@ -49,7 +49,7 @@ async def enroll_application(
             detail="Requires enrollment token format sm_enroll_..."
         )
         
-    owner_id = await consume_enrollment_credential(token)
+    owner_id, enrollment_id = await consume_enrollment_credential(token)
     if not owner_id:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -82,6 +82,13 @@ async def enroll_application(
 
     project_token = await create_or_regenerate_integration(project_id)
     await process_heartbeat(project_token, payload.agent_version or "1.0.0")
+
+    # Link the consumed enrollment to this project
+    if enrollment_id:
+        await db.enrollments.update_one(
+            {"_id": ObjectId(enrollment_id)},
+            {"$set": {"projectId": project_id}}
+        )
 
     return {
         "status": "ok", 

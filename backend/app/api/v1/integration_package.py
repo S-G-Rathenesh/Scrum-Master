@@ -391,3 +391,39 @@ async def download_integration_package_endpoint(
             "Content-Disposition": f'attachment; filename="{filename}"'
         }
     )
+
+
+@router.get("/setup-status")
+async def get_setup_status(
+    current_user: UserResponse = Depends(get_current_user)
+):
+    db = get_database()
+    # Get the latest enrollment credential for this user
+    latest_enrollment = await db.enrollments.find_one(
+        {"ownerId": current_user.id},
+        sort=[("createdAt", -1)]
+    )
+    
+    if not latest_enrollment:
+        return {"status": "WAITING"}
+    
+    if not latest_enrollment.get("used"):
+        return {"status": "WAITING"}
+        
+    project_id = latest_enrollment.get("projectId")
+    if not project_id:
+        return {"status": "WAITING"}
+        
+    project = await db.projects.find_one({"_id": ObjectId(project_id)})
+    if not project:
+        return {"status": "WAITING"}
+        
+    return {
+        "status": "CREATED",
+        "projectId": str(project["_id"]),
+        "name": project.get("name"),
+        "framework": project.get("framework"),
+        "backend": project.get("backend"),
+        "environment": project.get("environment"),
+        "lastConnectedAt": project.get("lastConnectedAt")
+    }
