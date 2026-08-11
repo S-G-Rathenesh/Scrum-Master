@@ -104,6 +104,19 @@ async def delete_project(
 ):
     obj_id = validate_object_id(project_id)
     
-    result = await db.projects.delete_one({"_id": obj_id, "ownerId": current_user.id})
-    if result.deleted_count == 0:
+    # Verify ownership before deletion
+    existing = await db.projects.find_one({"_id": obj_id, "ownerId": current_user.id})
+    if not existing:
         raise HTTPException(status_code=404, detail="Project not found")
+        
+    # Perform cascade deletion of associated data
+    await db.monitoring_checks.delete_many({"projectId": obj_id})
+    await db.incidents.delete_many({"projectId": obj_id})
+    await db.integrations.delete_many({"projectId": obj_id})
+    await db.error_groups.delete_many({"projectId": obj_id})
+    await db.error_events.delete_many({"projectId": obj_id})
+    await db.feedback.delete_many({"projectId": obj_id})
+    await db.notifications.delete_many({"projectId": project_id})  # Assuming notification string projectId
+
+    # Finally delete the project itself
+    await db.projects.delete_one({"_id": obj_id})

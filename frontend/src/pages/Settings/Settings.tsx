@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useProjectStore } from '../../stores/projectStore';
 import { monitoringService } from '../../services/monitoring';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/common/Card';
@@ -7,7 +8,8 @@ import { Button } from '../../components/common/Button';
 import styles from './Settings.module.css';
 
 export const Settings: React.FC = () => {
-  const { currentProject, fetchProjects } = useProjectStore();
+  const { currentProject, fetchProjects, deleteProject } = useProjectStore();
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     monitoringEnabled: false,
     frontendUrl: '',
@@ -21,6 +23,12 @@ export const Settings: React.FC = () => {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState('');
+  
+  // Deletion state
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [deleteConfirmation, setDeleteConfirmation] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
 
   useEffect(() => {
     if (currentProject) {
@@ -53,6 +61,28 @@ export const Settings: React.FC = () => {
     } finally {
       setIsSubmitting(false);
       setTimeout(() => setMessage(''), 3000);
+    }
+  };
+
+  const handleDeleteProject = async () => {
+    if (!currentProject || deleteConfirmation !== 'DELETE') return;
+    
+    setIsDeleting(true);
+    setDeleteError('');
+    try {
+      await deleteProject(currentProject.id);
+      setIsDeleteModalOpen(false);
+      // Let the store handle the current project updates, but we need to navigate away 
+      // if currentProject became null
+      const { currentProject: updatedCurrentProject } = useProjectStore.getState();
+      if (!updatedCurrentProject) {
+        navigate('/setup');
+      } else {
+        navigate('/dashboard');
+      }
+    } catch (err: any) {
+      setDeleteError(`Error: ${err.response?.data?.detail || err.message || 'Failed to delete project'}`);
+      setIsDeleting(false);
     }
   };
 
@@ -164,6 +194,76 @@ export const Settings: React.FC = () => {
           </form>
         </CardContent>
       </Card>
+
+      {/* DANGER ZONE CARD */}
+      <Card className={styles.dangerZoneCard}>
+        <CardHeader>
+          <CardTitle style={{ color: 'var(--danger-color, #ef4444)' }}>Danger Zone</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className={styles.dangerZoneContent}>
+            <div>
+              <h4 style={{ margin: '0 0 0.5rem 0' }}>Delete this project</h4>
+              <p style={{ margin: 0, color: 'var(--text-secondary)' }}>
+                Once you delete a project, there is no going back. Please be certain.
+              </p>
+            </div>
+            <Button 
+              variant="danger" 
+              onClick={() => {
+                setDeleteConfirmation('');
+                setDeleteError('');
+                setIsDeleteModalOpen(true);
+              }}
+            >
+              Delete Project
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* DELETE MODAL */}
+      {isDeleteModalOpen && (
+        <div className={styles.modalOverlay}>
+          <div className={styles.modalContent}>
+            <h2 className={styles.modalTitle}>Delete Project?</h2>
+            <p className={styles.modalText}>
+              This action permanently deletes this project and its associated Scrum Master integration data. This action cannot be undone.
+            </p>
+            <p className={styles.modalPrompt}>
+              Type <strong>DELETE</strong> to confirm
+            </p>
+            
+            <input
+              type="text"
+              className={styles.modalInput}
+              value={deleteConfirmation}
+              onChange={(e) => setDeleteConfirmation(e.target.value)}
+              placeholder="DELETE"
+              autoFocus
+            />
+
+            {deleteError && <div className={styles.modalError}>{deleteError}</div>}
+
+            <div className={styles.modalActions}>
+              <Button 
+                variant="secondary" 
+                onClick={() => setIsDeleteModalOpen(false)}
+                disabled={isDeleting}
+              >
+                Cancel
+              </Button>
+              <Button 
+                variant="danger" 
+                onClick={handleDeleteProject}
+                disabled={deleteConfirmation !== 'DELETE' || isDeleting}
+              >
+                {isDeleting ? 'Deleting...' : 'Delete Project'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

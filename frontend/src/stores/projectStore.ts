@@ -10,6 +10,7 @@ interface ProjectState {
   setCurrentProject: (project: Project | null) => void;
   selectProjectById: (id: string) => void;
   updateCurrentProjectIntegrationStatus: (status: 'WAITING' | 'CONNECTED' | 'DISCONNECTED' | 'REVOKED') => void;
+  deleteProject: (id: string) => Promise<void>;
 }
 
 export const useProjectStore = create<ProjectState>((set, get) => ({
@@ -66,6 +67,27 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       const updatedProject = { ...currentProject, integrationStatus: status };
       const updatedProjects = projects.map(p => p.id === currentProject.id ? updatedProject : p);
       set({ currentProject: updatedProject, projects: updatedProjects });
+    }
+  },
+
+  deleteProject: async (id: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      await projectService.deleteProject(id);
+      const { projects, currentProject } = get();
+      const updatedProjects = projects.filter(p => p.id !== id);
+      set({ projects: updatedProjects, isLoading: false });
+      
+      if (currentProject?.id === id) {
+        if (updatedProjects.length > 0) {
+          get().selectProjectById(updatedProjects[0].id);
+        } else {
+          get().setCurrentProject(null);
+        }
+      }
+    } catch (error: any) {
+      set({ error: error.message || 'Failed to delete project', isLoading: false });
+      throw error;
     }
   }
 }));

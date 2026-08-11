@@ -100,3 +100,82 @@
   color: var(--color-error);
   font-size: 0.875rem;
 }
+
+/* Danger Zone */
+.dangerZoneCard {
+  border: 1px solid var(--danger-color, #ef4444);
+}
+
+.dangerZoneContent {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* Modal */
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modalContent {
+  background-color: var(--color-bg-main, #1c1c1e);
+  padding: 2rem;
+  border-radius: var(--radius-lg, 8px);
+  width: 100%;
+  max-width: 480px;
+  border: 1px solid var(--color-border, #333);
+}
+
+.modalTitle {
+  margin-top: 0;
+  color: var(--danger-color, #ef4444);
+}
+
+.modalText {
+  color: var(--color-text-main, #fff);
+  margin-bottom: 1rem;
+}
+
+.modalPrompt {
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+  color: var(--text-secondary, #a1a1aa);
+}
+
+.modalInput {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid var(--color-border, #333);
+  border-radius: var(--radius-md, 4px);
+  background: var(--color-bg-hover, #2c2c2e);
+  color: #fff;
+  font-family: var(--font-mono);
+  margin-bottom: 1rem;
+}
+
+.modalInput:focus {
+  outline: none;
+  border-color: var(--danger-color, #ef4444);
+}
+
+.modalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.modalError {
+  color: var(--danger-color, #ef4444);
+  font-size: 0.85rem;
+  margin-bottom: 1rem;
+}
