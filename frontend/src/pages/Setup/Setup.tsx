@@ -195,6 +195,7 @@ export const Setup: React.FC = () => {
     let interval: number;
 
     if (activeStep >= 4 && activeStep < 5) {
+      console.log('[Setup] Starting setup-status polling...');
       const poll = async () => {
         try {
           const token = localStorage.getItem('token');
@@ -206,8 +207,10 @@ export const Setup: React.FC = () => {
           
           if (!res.ok) return;
           const data = await res.json();
+          console.log(`[Setup] setup-status polling response: ${data.status}`, data);
 
           if (data.status === 'CREATED') {
+            console.log(`[Setup] CREATED state detected! Project ID: ${data.projectId}`);
             setHandshakePhase(prev => {
               if (prev === 'WAITING') {
                 setTimeout(() => {
@@ -246,9 +249,12 @@ export const Setup: React.FC = () => {
     }
 
     return () => {
-      if (interval) clearInterval(interval);
+      if (interval) {
+        console.log('[Setup] Stopping setup-status polling.');
+        clearInterval(interval);
+      }
     };
-  }, [activeStep, fetchProjects, selectProjectById, navigate]);
+  }, [activeStep, fetchProjects, selectProjectById, navigate, onSignalEstablished]);
 
   /* ── Helpers ───────────────────────────────────────────── */
 
@@ -275,7 +281,21 @@ export const Setup: React.FC = () => {
       const token = localStorage.getItem('token') || '';
       if (!token) throw new Error('Authentication session expired. Please sign in again.');
 
-      const res = await fetch(`${API_BASE_URL}/integration/enrollment-package`, {
+      // Determine true backend base URL, resolving relative URLs against the window origin, 
+      // and stripping out /api/v1 to give the raw domain to the agent.
+      let agentBaseUrl = API_BASE_URL;
+      if (agentBaseUrl.startsWith('/')) {
+         agentBaseUrl = window.location.origin + agentBaseUrl;
+      }
+      agentBaseUrl = agentBaseUrl.replace(/\/api\/v1\/?$/, '');
+
+      const url = currentProject 
+        ? `${API_BASE_URL}/integration/enrollment-package?project_id=${currentProject.id}&backend_url=${encodeURIComponent(agentBaseUrl)}`
+        : `${API_BASE_URL}/integration/enrollment-package?backend_url=${encodeURIComponent(agentBaseUrl)}`;
+
+      console.log(`[Setup] Requesting integration package. Injecting backend_url: ${agentBaseUrl}`);
+
+      const res = await fetch(url, {
         method: 'GET',
         headers: { Authorization: `Bearer ${token}` },
       });

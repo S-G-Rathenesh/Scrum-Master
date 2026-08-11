@@ -138,6 +138,10 @@ class ScrumMasterAgent {
       const isEnrollment = this.token && this.token.startsWith('sm_enroll_');
       const endpoint = isEnrollment ? `${this.baseUrl}/api/v1/integration/enroll` : `${this.baseUrl}/api/v1/integration/heartbeat`;
       
+      if (isEnrollment) {
+        console.log(`[Scrum Master] Attempting enrollment handshake with ${endpoint}...`);
+      }
+
       const payload = isEnrollment ? {
         application_name: this.metadata.name,
         framework: this.metadata.framework,
@@ -161,6 +165,9 @@ class ScrumMasterAgent {
       
       if (res.ok) {
         const data = await res.json();
+        if (isEnrollment) {
+          console.log('[Scrum Master] Enrollment handshake successful! Project ID:', data.projectId);
+        }
         if (data.projectToken && data.projectToken !== this.token) {
            this.token = data.projectToken;
            try {
@@ -175,8 +182,16 @@ class ScrumMasterAgent {
              console.warn('[Scrum Master] Cached token in-memory.');
            }
         }
+      } else {
+        if (isEnrollment) {
+          const errText = await res.text();
+          console.error(`[Scrum Master] Enrollment failed (HTTP ${res.status}):`, errText);
+        }
       }
     } catch (err) {
+      if (this.token && this.token.startsWith('sm_enroll_')) {
+        console.error('[Scrum Master] Enrollment request failed:', err.message);
+      }
       // Silent failure to avoid crashing host application
     }
   }
@@ -343,19 +358,21 @@ After integration:
 The application's existing behavior must remain unchanged.
 """
 
-async def _build_zip_package(user_id: str, project_id: Optional[str] = None) -> Tuple[io.BytesIO, str]:
+async def _build_zip_package(user_id: str, project_id: Optional[str] = None, backend_url: Optional[str] = None) -> Tuple[io.BytesIO, str]:
     db = get_database()
     
     # Generate user-scoped temporary enrollment credential
     raw_token = await create_enrollment_credential(user_id)
     
+    actual_backend_url = backend_url.rstrip("/") if backend_url else settings.BACKEND_URL.rstrip("/")
+
     zip_buffer = io.BytesIO()
     with zipfile.ZipFile(zip_buffer, "a", zipfile.ZIP_DEFLATED, False) as zip_file:
         zip_file.writestr("scrum-master/README.md", README_TEMPLATE)
         zip_file.writestr("scrum-master/SCRUM_MASTER_INSTRUCTIONS.md", ANTIGRAVITY_INSTRUCTIONS)
-        config_content = CONFIG_EXAMPLE_TEMPLATE.replace("your_token_here", raw_token).replace("__BACKEND_URL__", settings.BACKEND_URL)
+        config_content = CONFIG_EXAMPLE_TEMPLATE.replace("your_token_here", raw_token).replace("__BACKEND_URL__", actual_backend_url)
         zip_file.writestr("scrum-master/scrum-master.config.example", config_content)
-        agent_content = AGENT_TEMPLATE_NODE.replace("__BACKEND_URL__", settings.BACKEND_URL)
+        agent_content = AGENT_TEMPLATE_NODE.replace("__BACKEND_URL__", actual_backend_url)
         zip_file.writestr("scrum-master/scrum-master-agent.js", agent_content)
         
     zip_buffer.seek(0)
@@ -365,10 +382,12 @@ async def _build_zip_package(user_id: str, project_id: Optional[str] = None) -> 
 
 @router.get("/enrollment-package")
 async def download_enrollment_package_query(
+    request: Request,
     project_id: Optional[str] = Query(None),
+    backend_url: Optional[str] = Query(None),
     current_user: UserResponse = Depends(get_current_user)
 ):
-    zip_buffer, filename = await _build_zip_package(current_user.id, project_id)
+    zip_buffer, filename = await _build_zip_package(current_user.id, project_id, backend_url)
     return StreamingResponse(
         zip_buffer,
         media_type="application/zip",
@@ -380,10 +399,12 @@ async def download_enrollment_package_query(
 
 @router.get("/download")
 async def download_integration_package_endpoint(
+    request: Request,
     project_id: Optional[str] = Query(None),
+    backend_url: Optional[str] = Query(None),
     current_user: UserResponse = Depends(get_current_user)
 ):
-    zip_buffer, filename = await _build_zip_package(current_user.id, project_id)
+    zip_buffer, filename = await _build_zip_package(current_user.id, project_id, backend_url)
     return StreamingResponse(
         zip_buffer,
         media_type="application/zip",

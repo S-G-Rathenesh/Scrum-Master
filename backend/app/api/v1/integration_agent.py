@@ -11,6 +11,10 @@ from app.services.feedback_service import FeedbackService
 from app.database.mongodb import get_database
 from pymongo.errors import PyMongoError
 from fastapi import BackgroundTasks
+import logging
+
+logger = logging.getLogger(__name__)
+
 from app.services.enrollment_service import consume_enrollment_credential
 from app.services.integration_service import create_or_regenerate_integration
 from app.schemas.project import ProjectStatus, IntegrationStatus
@@ -51,10 +55,13 @@ async def enroll_application(
         
     owner_id, enrollment_id = await consume_enrollment_credential(token)
     if not owner_id:
+        logger.warning(f"Failed enrollment attempt: Invalid or used token {token[:15]}...")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid, expired, or already used enrollment credential"
         )
+        
+    logger.info(f"Enrollment credential verified for user {owner_id}, token {token[:15]}...")
         
     db = get_database()
     now = datetime.now(timezone.utc)
@@ -64,6 +71,7 @@ async def enroll_application(
     existing = await db.projects.find_one({"ownerId": owner_id, "name": app_name})
     if existing:
         project_id = str(existing["_id"])
+        logger.info(f"Reusing existing project {project_id} for user {owner_id}")
     else:
         project_doc = {
             "name": app_name,
@@ -79,9 +87,11 @@ async def enroll_application(
         }
         result = await db.projects.insert_one(project_doc)
         project_id = str(result.inserted_id)
+        logger.info(f"Created new project {project_id} for user {owner_id}")
 
     project_token = await create_or_regenerate_integration(project_id)
     await process_heartbeat(project_token, payload.agent_version or "1.0.0")
+    logger.info(f"Integration activated and initial heartbeat processed for project {project_id}")
 
     # Link the consumed enrollment to this project
     if enrollment_id:
