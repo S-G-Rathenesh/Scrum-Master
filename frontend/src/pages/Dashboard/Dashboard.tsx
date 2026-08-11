@@ -105,7 +105,7 @@ export const Dashboard: React.FC = () => {
     { num: '02', label: 'INSTALL', completed: true },
     { num: '03', label: 'INTEGRATE', completed: projects.length > 0 },
     { num: '04', label: 'CONNECT', completed: currentProject.integrationStatus === 'CONNECTED' },
-    { num: '05', label: 'MONITOR', completed: Boolean(currentProject.monitoringEnabled) },
+    { num: '05', label: 'MONITOR', completed: Boolean(currentProject.monitoringEnabled && history.length > 0) },
   ];
   const completedStepsCount = setupSteps.filter(s => s.completed).length;
   const progressPercent = Math.round((completedStepsCount / setupSteps.length) * 100);

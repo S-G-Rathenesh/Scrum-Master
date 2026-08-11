@@ -39,6 +39,8 @@ SCRUM_MASTER_TOKEN=your_token_here
 # Optional metadata overrides (autodetected if omitted)
 # SCRUM_MASTER_APPLICATION_NAME=My Existing App
 # SCRUM_MASTER_ENVIRONMENT=development
+# SCRUM_MASTER_FRONTEND_URL=http://localhost:5173
+# SCRUM_MASTER_BACKEND_URL=http://localhost:8000
 """
 
 AGENT_TEMPLATE_NODE = """// scrum-master-agent.js
@@ -64,6 +66,8 @@ class ScrumMasterAgent {
     let framework = process.env.SCRUM_MASTER_FRAMEWORK;
     let backendTech = process.env.SCRUM_MASTER_BACKEND;
     const environment = process.env.SCRUM_MASTER_ENVIRONMENT || process.env.NODE_ENV || 'development';
+    const frontendUrl = process.env.SCRUM_MASTER_FRONTEND_URL || null;
+    const backendUrl = process.env.SCRUM_MASTER_BACKEND_URL || null;
 
     if (!appName) {
       try {
@@ -106,7 +110,9 @@ class ScrumMasterAgent {
       application_name: appName,
       framework: framework || 'Node.js',
       backend: backendTech || 'Node.js',
-      environment: environment
+      environment: environment,
+      frontendUrl: frontendUrl,
+      backendUrl: backendUrl
     };
   }
 

@@ -66,24 +66,38 @@ async def enroll_application(
     db = get_database()
     now = datetime.now(timezone.utc)
     app_name = payload.application_name or (payload.metadata.get("name") if payload.metadata else "Connected Application")
+    frontend_url = payload.metadata.get("frontendUrl") if payload.metadata else None
+    backend_url = payload.metadata.get("backendUrl") if payload.metadata else None
     
     # Check for existing project for this user to prevent duplicate projects
     existing = await db.projects.find_one({"ownerId": owner_id, "name": app_name})
     if existing:
         project_id = str(existing["_id"])
+        
+        # Auto-configure URLs on re-enrollment if they are provided
+        updates = {}
+        if frontend_url and not existing.get("frontendUrl"): updates["frontendUrl"] = frontend_url
+        if backend_url and not existing.get("backendUrl"): updates["backendUrl"] = backend_url
+        if frontend_url or backend_url: updates["monitoringEnabled"] = True
+        
+        if updates:
+            await db.projects.update_one({"_id": existing["_id"]}, {"$set": updates})
+            
         logger.info(f"Reusing existing project {project_id} for user {owner_id}")
     else:
         project_doc = {
             "name": app_name,
             "ownerId": owner_id,
             "status": ProjectStatus.ACTIVE.value,
-            "integrationStatus": IntegrationStatus.CONNECTED.value,
+            "integrationStatus": IntegrationStatus.PENDING.value,
             "framework": payload.framework,
             "backend": payload.backend,
             "environment": payload.environment,
+            "frontendUrl": frontend_url,
+            "backendUrl": backend_url,
+            "monitoringEnabled": bool(frontend_url or backend_url),
             "createdAt": now,
-            "updatedAt": now,
-            "lastConnectedAt": now
+            "updatedAt": now
         }
         result = await db.projects.insert_one(project_doc)
         project_id = str(result.inserted_id)
@@ -134,18 +148,33 @@ async def receive_heartbeat(
         db = get_database()
         now = datetime.now(timezone.utc)
         project_name = "Connected Application"
-        if payload.metadata and "name" in payload.metadata:
-            project_name = payload.metadata["name"]
+        frontend_url = None
+        backend_url = None
+        if payload.metadata:
+            if "name" in payload.metadata:
+                project_name = payload.metadata["name"]
+            frontend_url = payload.metadata.get("frontendUrl")
+            backend_url = payload.metadata.get("backendUrl")
             
         existing = await db.projects.find_one({"ownerId": owner_id, "name": project_name})
         if existing:
             project_id = str(existing["_id"])
+            updates = {}
+            if frontend_url and not existing.get("frontendUrl"): updates["frontendUrl"] = frontend_url
+            if backend_url and not existing.get("backendUrl"): updates["backendUrl"] = backend_url
+            if frontend_url or backend_url: updates["monitoringEnabled"] = True
+            
+            if updates:
+                await db.projects.update_one({"_id": existing["_id"]}, {"$set": updates})
         else:
             project_doc = {
                 "name": project_name,
                 "ownerId": owner_id,
                 "status": ProjectStatus.ACTIVE.value,
                 "integrationStatus": IntegrationStatus.CONNECTED.value,
+                "frontendUrl": frontend_url,
+                "backendUrl": backend_url,
+                "monitoringEnabled": bool(frontend_url or backend_url),
                 "createdAt": now,
                 "updatedAt": now,
                 "lastConnectedAt": now

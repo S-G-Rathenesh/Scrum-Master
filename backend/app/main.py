@@ -2,9 +2,13 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import asyncio
+import subprocess
+import os
 from app.database.mongodb import connect_to_mongo, close_mongo_connection
 from app.monitoring import MonitoringScheduler
 from app.core.config import settings
+
+agent_process = None
 
 from app.api.v1.auth import router as auth_router
 from app.api.v1.projects import router as projects_router
@@ -28,9 +32,32 @@ async def lifespan(app: FastAPI):
     scheduler = MonitoringScheduler()
     await scheduler.start()
     
+    # Start Scrum Master agent if configured
+    global agent_process
+    if settings.SCRUM_MASTER_TOKEN:
+        agent_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../scrum-master/scrum-master-agent.js"))
+        if os.path.exists(agent_path):
+            agent_env = os.environ.copy()
+            agent_env["SCRUM_MASTER_TOKEN"] = settings.SCRUM_MASTER_TOKEN
+            agent_env["SCRUM_MASTER_URL"] = settings.SCRUM_MASTER_URL or "https://api.scrummaster.rathenesh.dev"
+            agent_env["SCRUM_MASTER_FRONTEND_URL"] = settings.FRONTEND_URL or "http://localhost:5173"
+            agent_env["SCRUM_MASTER_BACKEND_URL"] = settings.BACKEND_URL or "http://localhost:8000"
+            agent_process = subprocess.Popen(["node", agent_path], env=agent_env)
+            print(f"[Lifespan] Scrum Master Agent started with PID {agent_process.pid}")
+        else:
+            print(f"[Lifespan] Scrum Master Agent not found at {agent_path}")
+    
     yield
     
     # Shutdown
+    if agent_process:
+        print("[Lifespan] Terminating Scrum Master Agent...")
+        agent_process.terminate()
+        try:
+            agent_process.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            agent_process.kill()
+
     await scheduler.stop()
     
     await close_mongo_connection()

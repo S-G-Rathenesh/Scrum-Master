@@ -19,8 +19,13 @@ class Settings(BaseSettings):
     # Google OAuth (For later phases)
     GOOGLE_CLIENT_ID: Optional[str] = None
     GOOGLE_CLIENT_SECRET: Optional[str] = None
+    
+    # Scrum Master Integration
+    SCRUM_MASTER_URL: Optional[str] = None
+    SCRUM_MASTER_TOKEN: Optional[str] = None
 
     class Config:
         env_file = ".env"
+        extra = "ignore"
 
 settings = Settings()
