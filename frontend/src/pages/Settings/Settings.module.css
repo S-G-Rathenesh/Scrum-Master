@@ -67,6 +67,7 @@
   border-radius: var(--radius-md);
   font-size: 0.875rem;
   background-color: var(--color-bg-main);
+  color: var(--color-text-main);
   outline: none;
   transition: border-color 0.2s;
 }
