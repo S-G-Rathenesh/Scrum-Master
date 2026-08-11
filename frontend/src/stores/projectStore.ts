@@ -11,6 +11,7 @@ interface ProjectState {
   selectProjectById: (id: string) => void;
   updateCurrentProjectIntegrationStatus: (status: 'WAITING' | 'CONNECTED' | 'DISCONNECTED' | 'REVOKED') => void;
   deleteProject: (id: string) => Promise<void>;
+  clearStore: () => void;
 }
 
 export const useProjectStore = create<ProjectState>((set, get) => ({
@@ -89,5 +90,10 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       set({ error: error.message || 'Failed to delete project', isLoading: false });
       throw error;
     }
+  },
+  
+  clearStore: () => {
+    localStorage.removeItem('currentProjectId');
+    set({ projects: [], currentProject: null, error: null });
   }
 }));

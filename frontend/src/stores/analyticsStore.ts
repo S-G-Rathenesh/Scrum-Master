@@ -82,6 +82,7 @@ interface AnalyticsState {
   setTimeRange: (range: TimeRange, projectId: string) => void;
   fetchAnalytics: (projectId: string) => Promise<void>;
   clearAnalytics: () => void;
+  clearStore: () => void;
 }
 
 export const useAnalyticsStore = create<AnalyticsState>((set, get) => ({
@@ -114,5 +115,13 @@ export const useAnalyticsStore = create<AnalyticsState>((set, get) => ({
         overview: null 
       });
     }
+  },
+
+  clearStore: () => {
+    set({
+      overview: null,
+      isLoading: false,
+      error: null
+    });
   }
 }));

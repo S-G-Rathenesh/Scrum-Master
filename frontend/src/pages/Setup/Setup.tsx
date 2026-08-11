@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useProjectStore } from '../../stores/projectStore';
+import { useAuthStore } from '../../stores/authStore';
 import { Button } from '../../components/common/Button';
 import { SignalLine } from '../../components/common/SignalLine';
 import { StatusIndicator } from '../../components/common/StatusIndicator';
@@ -90,17 +91,52 @@ interface DetectedApp {
 
 export const Setup: React.FC = () => {
   const { currentProject, fetchProjects, selectProjectById } = useProjectStore();
+  const { user } = useAuthStore();
   const navigate = useNavigate();
+
+  const getStorageKey = useCallback(() => {
+    return user ? `scrum_master_setup_state_${user.id}` : null;
+  }, [user]);
 
   /* ── State ─────────────────────────────────────────────── */
   const [activeStep, setActiveStep] = useState<number>(() => {
     if (currentProject?.integrationStatus === 'CONNECTED') return 5;
+    const key = user ? `scrum_master_setup_state_${user.id}` : null;
+    if (key) {
+      const stored = localStorage.getItem(key);
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          if (parsed.activeStep) return parsed.activeStep;
+        } catch (e) {}
+      }
+    }
     return 1;
   });
   const [handshakePhase, setHandshakePhase] = useState<'WAITING' | 'RECEIVED' | 'REGISTERING' | 'CREATED'>('WAITING');
 
   // Which steps are logically "done"
-  const [stepsCompleted, setStepsCompleted] = useState<Record<number, boolean>>({});
+  const [stepsCompleted, setStepsCompleted] = useState<Record<number, boolean>>(() => {
+    const key = user ? `scrum_master_setup_state_${user.id}` : null;
+    if (key) {
+      const stored = localStorage.getItem(key);
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          if (parsed.stepsCompleted) return parsed.stepsCompleted;
+        } catch (e) {}
+      }
+    }
+    return {};
+  });
+
+  // Persist UI state to user-scoped local storage
+  useEffect(() => {
+    const key = getStorageKey();
+    if (key && activeStep < 5) {
+      localStorage.setItem(key, JSON.stringify({ activeStep, stepsCompleted }));
+    }
+  }, [activeStep, stepsCompleted, getStorageKey]);
 
   // Step 1
   const [isDownloading, setIsDownloading] = useState(false);

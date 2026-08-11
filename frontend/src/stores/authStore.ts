@@ -1,5 +1,11 @@
 import { create } from 'zustand';
 import { type User, authService } from '../services/auth';
+import { useProjectStore } from './projectStore';
+import { useAnalyticsStore } from './analyticsStore';
+import { useErrorStore } from './errorStore';
+import { useFeedbackStore } from './feedbackStore';
+import { useMonitoringStore } from './monitoringStore';
+import { useNotificationStore } from './notificationStore';
 
 interface AuthState {
   user: User | null;
@@ -34,6 +40,12 @@ export const useAuthStore = create<AuthState>((set) => ({
   
   logout: () => {
     localStorage.removeItem('token');
+    useProjectStore.getState().clearStore();
+    useAnalyticsStore.getState().clearStore();
+    useErrorStore.getState().reset();
+    useFeedbackStore.getState().reset();
+    useMonitoringStore.getState().clearData();
+    useNotificationStore.getState().clearNotifications();
     set({ user: null, isAuthenticated: false, token: null });
   },
   
