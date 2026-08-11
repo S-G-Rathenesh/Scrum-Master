@@ -188,7 +188,15 @@ export const Setup: React.FC = () => {
       }
     };
     checkInitialStatus();
-  }, [navigate]);
+  }, [navigate, activeStep, currentProject]);
+
+  /* ── Helpers ───────────────────────────────────────────── */
+
+  const onSignalEstablished = useCallback((app: DetectedApp) => {
+    setDetectedApp(app);
+    setActiveStep(5);
+    setStepsCompleted((prev) => ({ ...prev, 1: true, 2: true, 3: true, 4: true }));
+  }, []);
 
   /* ── Handshake Polling (step ≥ 4) ──────────────────────── */
   useEffect(() => {
@@ -256,14 +264,6 @@ export const Setup: React.FC = () => {
     };
   }, [activeStep, fetchProjects, selectProjectById, navigate, onSignalEstablished]);
 
-  /* ── Helpers ───────────────────────────────────────────── */
-
-  const onSignalEstablished = (app: DetectedApp) => {
-    setDetectedApp(app);
-    setActiveStep(5);
-    setStepsCompleted((prev) => ({ ...prev, 1: true, 2: true, 3: true, 4: true }));
-  };
-
   const completeStep = useCallback(
     (step: number) => {
       setStepsCompleted((prev) => ({ ...prev, [step]: true }));
@@ -312,9 +312,9 @@ export const Setup: React.FC = () => {
       }
 
       const blob = await res.blob();
-      const url = window.URL.createObjectURL(blob);
+      const blobUrl = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = url;
+      a.href = blobUrl;
       a.download = 'scrum-master.zip';
       document.body.appendChild(a);
       a.click();
