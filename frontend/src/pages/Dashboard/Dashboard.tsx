@@ -23,7 +23,6 @@ import {
   Globe,
   Plus
 } from 'lucide-react';
-import { CreateProjectModal } from '../Projects/CreateProjectModal';
 import styles from './Dashboard.module.css';
 
 export const Dashboard: React.FC = () => {
@@ -32,7 +31,6 @@ export const Dashboard: React.FC = () => {
   const { groups: errorGroups, fetchGroups: fetchErrorGroups, isLoading: errorsLoading } = useErrorStore();
   const { unreadCount, fetchUnreadCount } = useFeedbackStore();
   const [integration, setIntegration] = React.useState<IntegrationStatusResponse | null>(null);
-  const [showCreateModal, setShowCreateModal] = React.useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -80,11 +78,10 @@ export const Dashboard: React.FC = () => {
 
             <SignalLine color="var(--color-primary)" height={24} animated={true} style={{ marginBottom: '1.5rem' }} />
             
-            <Button size="lg" onClick={() => setShowCreateModal(true)} style={{ padding: '0 2.25rem', height: '2.85rem', fontSize: '0.875rem', background: 'var(--color-primary)', color: '#080A0F', fontWeight: 700, fontFamily: 'var(--font-mono)' }}>
+            <Button size="lg" onClick={() => navigate('/setup')} style={{ padding: '0 2.25rem', height: '2.85rem', fontSize: '0.875rem', background: 'var(--color-primary)', color: '#080A0F', fontWeight: 700, fontFamily: 'var(--font-mono)' }}>
               <Plus size={16} style={{ marginRight: '6px' }} /> CREATE PROJECT
             </Button>
           </div>
-          {showCreateModal && <CreateProjectModal onClose={() => setShowCreateModal(false)} />}
         </div>
       );
     }
@@ -97,11 +94,10 @@ export const Dashboard: React.FC = () => {
           <p className={styles.emptyStateDesc}>
             Select a project from the top workspace selector or register a new system to inspect its control center.
           </p>
-          <Button onClick={() => setShowCreateModal(true)} variant="outline">
-            Setup Project
+          <Button onClick={() => navigate('/setup')} variant="outline">
+            ADD PROJECT
           </Button>
         </div>
-        {showCreateModal && <CreateProjectModal onClose={() => setShowCreateModal(false)} />}
       </div>
     );
   }

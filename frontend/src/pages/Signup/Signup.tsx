@@ -78,6 +78,9 @@ export const Signup: React.FC = () => {
   return (
     <div className={styles.container}>
       <div className={styles.authWrapper}>
+        <Link to="/" style={{ alignSelf: 'flex-start', color: 'var(--color-text-muted)', fontSize: '0.85rem', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+          &larr; Back to Home
+        </Link>
         <div className={styles.brandHeader}>
           <img src={logo} alt="Scrum Master Logo" className={styles.logo} />
           <h1 className={styles.brandTitle}>SCRUM MASTER</h1>

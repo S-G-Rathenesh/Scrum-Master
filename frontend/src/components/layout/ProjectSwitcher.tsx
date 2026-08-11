@@ -2,14 +2,12 @@ import React, { useState, useRef, useEffect } from 'react';
 import { ChevronDown, Plus, Check } from 'lucide-react';
 import { useProjectStore } from '../../stores/projectStore';
 import { useNavigate } from 'react-router-dom';
-import { CreateProjectModal } from '../../pages/Projects/CreateProjectModal';
 import styles from './ProjectSwitcher.module.css';
 
 export const ProjectSwitcher: React.FC = () => {
-  const { projects, currentProject, selectProjectById } = useProjectStore();
+  const { projects, currentProject, selectProjectById, setCurrentProject } = useProjectStore();
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
-  const [showCreateModal, setShowCreateModal] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
@@ -109,7 +107,8 @@ export const ProjectSwitcher: React.FC = () => {
                 className={styles.addBtn}
                 onClick={() => {
                   setIsOpen(false);
-                  setShowCreateModal(true);
+                  setCurrentProject(null);
+                  navigate('/setup');
                 }}
               >
                 <Plus size={16} />
@@ -119,10 +118,6 @@ export const ProjectSwitcher: React.FC = () => {
           </div>
         )}
       </div>
-      
-      {showCreateModal && (
-        <CreateProjectModal onClose={() => setShowCreateModal(false)} />
-      )}
     </>
   );
 };

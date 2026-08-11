@@ -96,9 +96,9 @@ export const Setup: React.FC = () => {
   /* ── State ─────────────────────────────────────────────── */
   const [activeStep, setActiveStep] = useState<number>(() => {
     if (currentProject?.integrationStatus === 'CONNECTED') return 5;
-    if (currentProject?.integrationStatus === 'WAITING') return 4;
     return 1;
   });
+  const [handshakePhase, setHandshakePhase] = useState<'WAITING' | 'RECEIVED' | 'REGISTERING' | 'CREATED'>('WAITING');
 
   // Which steps are logically "done"
   const [stepsCompleted, setStepsCompleted] = useState<Record<number, boolean>>({});
@@ -157,14 +157,33 @@ export const Setup: React.FC = () => {
         const all = useProjectStore.getState().projects;
         const connected = all.find((p) => p.integrationStatus === 'CONNECTED');
         if (connected) {
-          selectProjectById(connected.id);
-          onSignalEstablished({
-            name: connected.name,
-            id: connected.id,
-            framework: (connected as any).framework,
-            backend: (connected as any).backend,
-            environment: (connected as any).environment,
-            lastConnectedAt: (connected as any).lastConnectedAt || new Date().toISOString(),
+          // If already fully connected but not started animation, run it
+          setHandshakePhase(prev => {
+            if (prev === 'WAITING') {
+              // Trigger sequence
+              setTimeout(() => {
+                setHandshakePhase('REGISTERING');
+                setTimeout(() => {
+                  setHandshakePhase('CREATED');
+                  setTimeout(() => {
+                    selectProjectById(connected.id);
+                    onSignalEstablished({
+                      name: connected.name,
+                      id: connected.id,
+                      framework: (connected as any).framework,
+                      backend: (connected as any).backend,
+                      environment: (connected as any).environment,
+                      lastConnectedAt: (connected as any).lastConnectedAt || new Date().toISOString(),
+                    });
+                    setTimeout(() => {
+                      navigate('/dashboard');
+                    }, 1000);
+                  }, 800);
+                }, 1200);
+              }, 800);
+              return 'RECEIVED';
+            }
+            return prev;
           });
         }
       };
@@ -540,21 +559,28 @@ export const Setup: React.FC = () => {
                     </Button>
                   </div>
                 ) : (
-                  /* ── Waiting ──────────────────────────────── */
+                  /* ── Waiting / Receiving ──────────────────────────────── */
                   <>
-                    <StatusIndicator status="WAITING" label="LISTENING FOR APPLICATION" size="lg" />
-                    <SignalLine color="#F5B942" height={28} animated={true} style={{ maxWidth: '400px', width: '100%' }} />
+                    <StatusIndicator 
+                      status={handshakePhase === 'WAITING' ? 'WAITING' : 'CONNECTED'} 
+                      label={
+                        handshakePhase === 'WAITING' ? 'LISTENING FOR APPLICATION' :
+                        handshakePhase === 'RECEIVED' ? 'SIGNAL RECEIVED' :
+                        handshakePhase === 'REGISTERING' ? 'REGISTERING PROJECT...' :
+                        'PROJECT CREATED'
+                      } 
+                      size="lg" 
+                    />
+                    <SignalLine 
+                      color={handshakePhase === 'WAITING' ? '#F5B942' : '#10B981'} 
+                      height={28} 
+                      animated={handshakePhase !== 'CREATED'} 
+                      style={{ maxWidth: '400px', width: '100%' }} 
+                    />
 
                     <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8rem', color: '#8D96A5', marginTop: '0.5rem' }}>
-                      ENROLLMENT STATUS
+                      ENROLLMENT STATUS: {handshakePhase}
                     </div>
-                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: '#F5B942', fontWeight: 700 }}>
-                      WAITING FOR SIGNAL
-                    </div>
-
-                    <p className={styles.stepDesc} style={{ marginBottom: 0, marginTop: '0.5rem', textAlign: 'center' }}>
-                      Waiting for the Scrum Master agent to connect...
-                    </p>
                   </>
                 )}
               </div>
