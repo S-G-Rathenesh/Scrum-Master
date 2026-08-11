@@ -18,7 +18,12 @@ export const ApiHealth: React.FC = () => {
   }, [currentProject?.id, fetchHistory]);
 
   if (!currentProject) {
-    return <ProjectRequiredEmptyState message="Select a project to monitor API health." />;
+    return (
+      <ProjectRequiredEmptyState 
+        type="api-health" 
+        message="Select a project to check API health, uptime, and availability." 
+      />
+    );
   }
 
   const backendChecks = history.filter(h => h.target === 'backend');

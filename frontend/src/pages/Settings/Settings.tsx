@@ -88,7 +88,12 @@ export const Settings: React.FC = () => {
   };
 
   if (!currentProject) {
-    return <ProjectRequiredEmptyState message="Select a project to configure project settings." />;
+    return (
+      <ProjectRequiredEmptyState 
+        type="settings" 
+        message="Select a project to configure project settings and integrations." 
+      />
+    );
   }
 
   return (

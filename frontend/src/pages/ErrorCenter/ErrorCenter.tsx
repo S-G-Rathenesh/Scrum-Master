@@ -54,7 +54,12 @@ export const ErrorCenter: React.FC = () => {
   };
 
   if (!currentProject) {
-    return <ProjectRequiredEmptyState message="Select a project to view application errors." />;
+    return (
+      <ProjectRequiredEmptyState 
+        type="errors" 
+        message="Select a project to view and track errors and exceptions." 
+      />
+    );
   }
 
   return (

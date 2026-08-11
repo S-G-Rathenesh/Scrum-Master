@@ -149,7 +149,12 @@ export const Members: React.FC = () => {
   };
 
   if (!currentProject) {
-    return <ProjectRequiredEmptyState message="Select a project to view project members." />;
+    return (
+      <ProjectRequiredEmptyState 
+        type="members" 
+        message="Select a project to manage team members and permissions." 
+      />
+    );
   }
 
   const selectedRoleObj = ROLE_OPTIONS.find(r => r.value === accessLevel) || ROLE_OPTIONS[0];

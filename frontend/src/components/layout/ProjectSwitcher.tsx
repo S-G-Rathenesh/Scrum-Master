@@ -17,8 +17,18 @@ export const ProjectSwitcher: React.FC = () => {
         setIsOpen(false);
       }
     };
+    
+    const handleOpenSwitcher = () => {
+      setIsOpen(true);
+    };
+    
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    window.addEventListener('open-project-switcher', handleOpenSwitcher);
+    
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      window.removeEventListener('open-project-switcher', handleOpenSwitcher);
+    };
   }, []);
 
   const filteredProjects = projects.filter(p => 

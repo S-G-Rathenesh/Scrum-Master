@@ -87,7 +87,12 @@ export const Dashboard: React.FC = () => {
       );
     }
     
-    return <ProjectRequiredEmptyState message="Select a project to view your monitoring dashboard." />;
+    return (
+      <ProjectRequiredEmptyState 
+        type="dashboard" 
+        message="Choose or create a project to view your dashboard and start monitoring your application." 
+      />
+    );
   }
 
   const activeIncidents = incidents.filter(i => i.status === 'open');

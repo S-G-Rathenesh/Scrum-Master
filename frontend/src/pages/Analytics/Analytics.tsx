@@ -54,7 +54,12 @@ export const Analytics: React.FC = () => {
   };
 
   if (!currentProject) {
-    return <ProjectRequiredEmptyState message="Select a project to explore analytics and insights." />;
+    return (
+      <ProjectRequiredEmptyState 
+        type="analytics" 
+        message="Select a project to explore analytics, metrics, and insights." 
+      />
+    );
   }
 
   return (

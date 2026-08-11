@@ -45,7 +45,12 @@ export const FeedbackHub: React.FC = () => {
   };
 
   if (!currentProject) {
-    return <ProjectRequiredEmptyState message="Select a project to view feedback." />;
+    return (
+      <ProjectRequiredEmptyState 
+        type="feedback" 
+        message="Select a project to view feedback from your users." 
+      />
+    );
   }
 
   return (

@@ -43,7 +43,12 @@ export const Notifications: React.FC = () => {
   }, [currentProject, fetchNotifications]);
 
   if (!currentProject) {
-    return <ProjectRequiredEmptyState message="Select a project to view notifications." />;
+    return (
+      <ProjectRequiredEmptyState 
+        type="notifications" 
+        message="Select a project to view your notifications and important updates." 
+      />
+    );
   }
 
   const filteredNotifications = notifications.filter(n => {
