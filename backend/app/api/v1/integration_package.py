@@ -1,7 +1,7 @@
 import io
 import zipfile
 from typing import Optional, Tuple
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 from app.api.dependencies import get_current_user
 from app.schemas.user import UserResponse
